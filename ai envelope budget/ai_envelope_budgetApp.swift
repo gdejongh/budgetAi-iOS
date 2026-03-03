@@ -9,9 +9,13 @@ import SwiftUI
 
 @main
 struct ai_envelope_budgetApp: App {
+    @State private var authService = AuthService()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environment(authService)
+                .preferredColorScheme(.dark)
         }
     }
 }
