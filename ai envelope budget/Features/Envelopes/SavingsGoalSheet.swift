@@ -21,6 +21,7 @@ struct SavingsGoalSheet: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var showRemoveConfirmation = false
+    @FocusState private var isAmountFocused: Bool
 
     private var isEditing: Bool {
         envelope.hasGoal
@@ -70,10 +71,7 @@ struct SavingsGoalSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.bgPrimary.ignoresSafeArea()
-
-                ScrollView {
+            ScrollView {
                     VStack(spacing: AppDesign.paddingLg) {
                         // Header
                         headerSection
@@ -107,15 +105,15 @@ struct SavingsGoalSheet: View {
                         }
                     }
                     .padding(AppDesign.paddingLg)
-                }
             }
             .navigationTitle(isEditing ? "Edit Goal" : "Set Goal")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color.textSecondary)
+                }
+                KeyboardDoneToolbar {
+                    isAmountFocused = false
                 }
             }
             .confirmationDialog(
@@ -139,8 +137,7 @@ struct SavingsGoalSheet: View {
         VStack(spacing: 8) {
             Image(systemName: "target")
                 .font(.system(size: 40))
-                .foregroundStyle(LinearGradient.brand)
-                .shadow(color: .accentCyan.opacity(0.3), radius: 12)
+                .foregroundStyle(Color.accentColor)
 
             Text(envelope.name)
                 .font(.headline)
@@ -166,7 +163,6 @@ struct SavingsGoalSheet: View {
                     goalTypeButton(type)
                 }
             }
-            .glassCard(cornerRadius: AppDesign.cornerRadiusMd)
         }
     }
 
@@ -205,6 +201,7 @@ struct SavingsGoalSheet: View {
                         .foregroundStyle(Color.textSecondary)
                     TextField("0.00", text: $monthlyTarget)
                         .keyboardType(.decimalPad)
+                        .focused($isAmountFocused)
                         .textFieldStyle(.plain)
                         .foregroundStyle(Color.textPrimary)
                 }
@@ -227,6 +224,7 @@ struct SavingsGoalSheet: View {
                         .foregroundStyle(Color.textSecondary)
                     TextField("0.00", text: $weeklyTarget)
                         .keyboardType(.decimalPad)
+                        .focused($isAmountFocused)
                         .textFieldStyle(.plain)
                         .foregroundStyle(Color.textPrimary)
                 }
@@ -234,7 +232,7 @@ struct SavingsGoalSheet: View {
 
             if let amount = Decimal(string: weeklyTarget), amount > 0 {
                 let approxMonthly = amount * 4
-                computedRow("≈ \(formatCurrency(approxMonthly))/month", icon: "calendar")
+                computedRow("≈ \(approxMonthly.asCurrency())/month", icon: "calendar")
             }
 
             infoCard(
@@ -254,6 +252,7 @@ struct SavingsGoalSheet: View {
                         .foregroundStyle(Color.textSecondary)
                     TextField("0.00", text: $goalAmount)
                         .keyboardType(.decimalPad)
+                        .focused($isAmountFocused)
                         .textFieldStyle(.plain)
                         .foregroundStyle(Color.textPrimary)
                 }
@@ -269,11 +268,10 @@ struct SavingsGoalSheet: View {
                 .datePickerStyle(.compact)
                 .labelsHidden()
                 .tint(.accentCyan)
-                .colorScheme(.dark)
             }
 
             if let monthly = computedMonthly {
-                computedRow("Save \(formatCurrency(monthly))/month to reach your goal", icon: "chart.line.uptrend.xyaxis")
+                computedRow("Save \(monthly.asCurrency())/month to reach your goal", icon: "chart.line.uptrend.xyaxis")
             }
 
             infoCard(
@@ -334,7 +332,6 @@ struct SavingsGoalSheet: View {
             Group {
                 if isSaving {
                     ProgressView()
-                        .tint(.white)
                 } else {
                     HStack(spacing: 8) {
                         Image(systemName: "target")
@@ -342,16 +339,10 @@ struct SavingsGoalSheet: View {
                     }
                 }
             }
-            .font(.headline)
-            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                    .fill(isValid ? LinearGradient.brand : LinearGradient(colors: [.textMuted], startPoint: .leading, endPoint: .trailing))
-            )
-            .glowShadow()
         }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
         .disabled(!isValid || isSaving)
     }
 
@@ -388,16 +379,7 @@ struct SavingsGoalSheet: View {
                 .foregroundStyle(Color.textSecondary)
 
             content()
-                .padding(AppDesign.paddingSm + 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                        .fill(Color.bgInput)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                                .stroke(Color.borderSubtle, lineWidth: 1)
-                        )
-                )
+                .formFieldBackground()
         }
     }
 
@@ -460,16 +442,6 @@ struct SavingsGoalSheet: View {
         isSaving = false
     }
 
-    // MARK: - Helpers
-
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$0.00"
-    }
 }
 
 #Preview {

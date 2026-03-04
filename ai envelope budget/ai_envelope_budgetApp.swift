@@ -15,7 +15,6 @@ struct ai_envelope_budgetApp: App {
         WindowGroup {
             RootView()
                 .environment(authService)
-                .preferredColorScheme(.dark)
         }
     }
 }

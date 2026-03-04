@@ -21,6 +21,7 @@ struct CCPaymentSheet: View {
     @State private var transactionDate = Date()
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @FocusState private var isAmountFocused: Bool
 
     private var bankAccounts: [BankAccountResponse] {
         accountService.bankAccounts
@@ -34,125 +35,113 @@ struct CCPaymentSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.bgPrimary.ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: AppDesign.paddingLg) {
+                    // Credit Card Info Header
+                    ccInfoCard
 
-                ScrollView {
-                    VStack(spacing: AppDesign.paddingLg) {
-                        // Credit Card Info Header
-                        ccInfoCard
-
-                        // Pay From
-                        formSection("Pay From") {
-                            Picker("Bank Account", selection: $selectedBankAccountId) {
-                                Text("Select bank account").tag("")
-                                ForEach(bankAccounts) { account in
-                                    HStack {
-                                        Image(systemName: account.resolvedType.icon)
-                                        Text(account.name)
-                                    }
-                                    .tag(account.id ?? "")
+                    // Pay From
+                    formSection("Pay From") {
+                        Picker("Bank Account", selection: $selectedBankAccountId) {
+                            Text("Select bank account").tag("")
+                            ForEach(bankAccounts) { account in
+                                HStack {
+                                    Image(systemName: account.resolvedType.icon)
+                                    Text(account.name)
                                 }
-                            }
-                            .pickerStyle(.menu)
-                            .tint(.accentCyan)
-                        }
-
-                        // Amount
-                        formSection("Payment Amount") {
-                            HStack {
-                                Text("$")
-                                    .foregroundStyle(Color.textSecondary)
-                                TextField("0.00", text: $amount)
-                                    .keyboardType(.decimalPad)
-                                    .textFieldStyle(.plain)
-                                    .foregroundStyle(Color.textPrimary)
-
-                                Spacer()
-
-                                // Pay full balance shortcut
-                                if creditCard.currentBalance > 0 {
-                                    Button {
-                                        amount = "\(creditCard.currentBalance)"
-                                    } label: {
-                                        Text("Pay Full")
-                                            .font(.caption)
-                                            .fontWeight(.semibold)
-                                            .foregroundStyle(Color.accentCyan)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(
-                                                Capsule().fill(Color.accentCyan.opacity(0.15))
-                                            )
-                                    }
-                                }
+                                .tag(account.id ?? "")
                             }
                         }
-
-                        // Description
-                        formSection("Description (optional)") {
-                            TextField("e.g. Monthly CC payment", text: $descriptionText)
-                                .textFieldStyle(.plain)
-                                .foregroundStyle(Color.textPrimary)
-                        }
-
-                        // Date
-                        formSection("Date") {
-                            DatePicker(
-                                "Date",
-                                selection: $transactionDate,
-                                displayedComponents: .date
-                            )
-                            .datePickerStyle(.compact)
-                            .labelsHidden()
-                            .tint(.accentCyan)
-                            .colorScheme(.dark)
-                        }
-
-                        // Error
-                        if let error = errorMessage {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundStyle(Color.danger)
-                        }
-
-                        // Submit
-                        Button {
-                            Task { await save() }
-                        } label: {
-                            Group {
-                                if isSaving {
-                                    ProgressView()
-                                        .tint(.white)
-                                } else {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: "creditcard.fill")
-                                        Text("Make Payment")
-                                    }
-                                }
-                            }
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                    .fill(isValid ? LinearGradient.brand : LinearGradient(colors: [.textMuted], startPoint: .leading, endPoint: .trailing))
-                            )
-                            .glowShadow()
-                        }
-                        .disabled(!isValid || isSaving)
+                        .pickerStyle(.menu)
+                        .tint(.accentCyan)
                     }
-                    .padding(AppDesign.paddingLg)
+
+                    // Amount
+                    formSection("Payment Amount") {
+                        HStack {
+                            Text("$")
+                                .foregroundStyle(Color.textSecondary)
+                            TextField("0.00", text: $amount)
+                                .keyboardType(.decimalPad)
+                                .textFieldStyle(.plain)
+                                .focused($isAmountFocused)
+
+                            Spacer()
+
+                            // Pay full balance shortcut
+                            if creditCard.currentBalance > 0 {
+                                Button {
+                                    amount = "\(creditCard.currentBalance)"
+                                } label: {
+                                    Text("Pay Full")
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(Color.accentCyan)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule().fill(Color.accentCyan.opacity(0.15))
+                                        )
+                                }
+                            }
+                        }
+                    }
+
+                    // Description
+                    formSection("Description (optional)") {
+                        TextField("e.g. Monthly CC payment", text: $descriptionText)
+                            .textFieldStyle(.plain)
+                    }
+
+                    // Date
+                    formSection("Date") {
+                        DatePicker(
+                            "Date",
+                            selection: $transactionDate,
+                            displayedComponents: .date
+                        )
+                        .datePickerStyle(.compact)
+                        .labelsHidden()
+                        .tint(.accentCyan)
+                    }
+
+                    // Error
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(Color.danger)
+                    }
+
+                    // Submit
+                    Button {
+                        Task { await save() }
+                    } label: {
+                        Group {
+                            if isSaving {
+                                ProgressView()
+                            } else {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "creditcard.fill")
+                                    Text("Make Payment")
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!isValid || isSaving)
                 }
+                .padding(AppDesign.paddingLg)
             }
             .navigationTitle("CC Payment")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color.textSecondary)
+                }
+                KeyboardDoneToolbar {
+                    isAmountFocused = false
                 }
             }
             .onAppear {
@@ -169,14 +158,13 @@ struct CCPaymentSheet: View {
         HStack(spacing: 12) {
             Image(systemName: "creditcard.fill")
                 .font(.title2)
-                .foregroundStyle(LinearGradient.brand)
+                .foregroundStyle(Color.accentColor)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(creditCard.name)
                     .font(.headline)
-                    .foregroundStyle(Color.textPrimary)
 
-                Text("Balance owed: \(formatCurrency(creditCard.currentBalance))")
+                Text("Balance owed: \(creditCard.currentBalance.asCurrency())")
                     .font(.caption)
                     .foregroundStyle(Color.warning)
             }
@@ -196,16 +184,8 @@ struct CCPaymentSheet: View {
                 .foregroundStyle(Color.textSecondary)
 
             content()
-                .padding(AppDesign.paddingSm + 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                        .fill(Color.bgInput)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                                .stroke(Color.borderSubtle, lineWidth: 1)
-                        )
-                )
+                .formFieldBackground()
         }
     }
 
@@ -236,17 +216,6 @@ struct CCPaymentSheet: View {
             errorMessage = transactionService.errorMessage ?? "Failed to process payment."
         }
         isSaving = false
-    }
-
-    // MARK: - Helpers
-
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$0.00"
     }
 }
 

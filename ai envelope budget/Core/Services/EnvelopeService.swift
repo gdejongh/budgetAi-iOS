@@ -108,6 +108,16 @@ final class EnvelopeService {
         monthlyAllocations.reduce(Decimal.zero) { $0 + ($1.amount ?? Decimal.zero) }
     }
 
+    /// Total remaining across all envelopes
+    var totalRemaining: Decimal {
+        envelopes.reduce(Decimal.zero) { $0 + remaining(for: $1) }
+    }
+
+    /// Total spent this month across all envelopes
+    var totalMonthlySpent: Decimal {
+        spentMap.values.reduce(Decimal.zero, +)
+    }
+
     /// Total envelopes count
     var envelopeCount: Int {
         envelopes.count

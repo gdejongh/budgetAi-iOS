@@ -22,6 +22,7 @@ struct TransferSheet: View {
     @State private var transactionDate = Date()
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @FocusState private var isAmountFocused: Bool
 
     private var isValid: Bool {
         !sourceAccountId.isEmpty &&
@@ -33,18 +34,14 @@ struct TransferSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.bgPrimary.ignoresSafeArea()
-
-                ScrollView {
+            ScrollView {
                     VStack(spacing: AppDesign.paddingLg) {
                         // Transfer Icon
                         HStack {
                             Spacer()
                             Image(systemName: "arrow.triangle.swap")
                                 .font(.system(size: 40))
-                                .foregroundStyle(LinearGradient.brand)
-                                .shadow(color: .accentCyan.opacity(0.3), radius: 12)
+                                .foregroundStyle(Color.accentColor)
                             Spacer()
                         }
                         .padding(.vertical, AppDesign.paddingSm)
@@ -101,6 +98,7 @@ struct TransferSheet: View {
                                     .foregroundStyle(Color.textSecondary)
                                 TextField("0.00", text: $amount)
                                     .keyboardType(.decimalPad)
+                                    .focused($isAmountFocused)
                                     .textFieldStyle(.plain)
                                     .foregroundStyle(Color.textPrimary)
                             }
@@ -123,7 +121,6 @@ struct TransferSheet: View {
                             .datePickerStyle(.compact)
                             .labelsHidden()
                             .tint(.accentCyan)
-                            .colorScheme(.dark)
                         }
 
                         // Same account warning
@@ -151,7 +148,6 @@ struct TransferSheet: View {
                             Group {
                                 if isSaving {
                                     ProgressView()
-                                        .tint(.white)
                                 } else {
                                     HStack(spacing: 8) {
                                         Image(systemName: "arrow.triangle.swap")
@@ -159,28 +155,22 @@ struct TransferSheet: View {
                                     }
                                 }
                             }
-                            .font(.headline)
-                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                    .fill(isValid ? LinearGradient.brand : LinearGradient(colors: [.textMuted], startPoint: .leading, endPoint: .trailing))
-                            )
-                            .glowShadow()
                         }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
                         .disabled(!isValid || isSaving)
                     }
                     .padding(AppDesign.paddingLg)
-                }
             }
             .navigationTitle("Transfer")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color.textSecondary)
+                }
+                KeyboardDoneToolbar {
+                    isAmountFocused = false
                 }
             }
             .onAppear {
@@ -202,16 +192,7 @@ struct TransferSheet: View {
                 .foregroundStyle(Color.textSecondary)
 
             content()
-                .padding(AppDesign.paddingSm + 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                        .fill(Color.bgInput)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                                .stroke(Color.borderSubtle, lineWidth: 1)
-                        )
-                )
+                .formFieldBackground()
         }
     }
 

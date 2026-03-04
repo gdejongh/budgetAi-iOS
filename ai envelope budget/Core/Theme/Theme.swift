@@ -7,53 +7,33 @@
 
 import SwiftUI
 
-// MARK: - Color Palette
+// MARK: - Semantic Color Palette (System-Adaptive)
 
 extension Color {
-    // Backgrounds
-    static let bgPrimary = Color(hex: "0b0e14")
-    static let bgSurface = Color(hex: "121620")
-    static let bgCard = Color(hex: "181d2a")
-    static let bgCardHover = Color(hex: "1e2536")
-    static let bgInput = Color(hex: "131825")
+    // Backgrounds — adapt automatically to light/dark mode
+    static let bgPrimary = Color(.systemBackground)
+    static let bgSurface = Color(.secondarySystemBackground)
+    static let bgCard = Color(.secondarySystemGroupedBackground)
+    static let bgCardHover = Color(.quaternarySystemFill)
+    static let bgInput = Color(.secondarySystemBackground)
 
-    // Accents
-    static let accentCyan = Color(hex: "22d3ee")
-    static let accentViolet = Color(hex: "818cf8")
+    // Accents — use the app-wide tint + a secondary brand color
+    static let accentCyan = Color.accentColor
+    static let accentViolet = Color.indigo
 
-    // Text
-    static let textPrimary = Color(hex: "e8eaed")
-    static let textSecondary = Color(hex: "9aa0ab")
-    static let textMuted = Color(hex: "5f6672")
+    // Text — system label hierarchy, adapts to appearance & accessibility
+    static let textPrimary = Color(.label)
+    static let textSecondary = Color(.secondaryLabel)
+    static let textMuted = Color(.tertiaryLabel)
 
-    // Semantic
-    static let success = Color(hex: "34d399")
-    static let warning = Color(hex: "fbbf24")
-    static let danger = Color(hex: "f87171")
+    // Semantic — system colors that adapt to increased contrast
+    static let success = Color.green
+    static let warning = Color.yellow
+    static let danger = Color.red
 
-    // Borders
-    static let borderSubtle = Color.white.opacity(0.06)
-    static let borderFocus = Color(hex: "22d3ee")
-}
-
-// MARK: - Hex Color Initializer
-
-extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let r, g, b: Double
-        switch hex.count {
-        case 6:
-            r = Double((int >> 16) & 0xFF) / 255
-            g = Double((int >> 8) & 0xFF) / 255
-            b = Double(int & 0xFF) / 255
-        default:
-            r = 0; g = 0; b = 0
-        }
-        self.init(red: r, green: g, blue: b)
-    }
+    // Borders — system separator adapts to all modes
+    static let borderSubtle = Color(.separator)
+    static let borderFocus = Color.accentColor
 }
 
 // MARK: - Gradients
@@ -75,22 +55,8 @@ struct GlassCard: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(Color.bgCard.opacity(0.85))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: cornerRadius)
-                            .stroke(Color.borderSubtle, lineWidth: 1)
-                    )
+                    .fill(.regularMaterial)
             )
-    }
-}
-
-struct GlowShadow: ViewModifier {
-    var color: Color = .accentCyan
-    var radius: CGFloat = 12
-
-    func body(content: Content) -> some View {
-        content
-            .shadow(color: color.opacity(0.3), radius: radius, x: 0, y: 4)
     }
 }
 
@@ -99,26 +65,9 @@ extension View {
         modifier(GlassCard(cornerRadius: cornerRadius))
     }
 
-    func glowShadow(color: Color = .accentCyan, radius: CGFloat = 12) -> some View {
-        modifier(GlowShadow(color: color, radius: radius))
-    }
-}
-
-// MARK: - Gradient Text
-
-struct GradientText: View {
-    let text: String
-    let font: Font
-
-    init(_ text: String, font: Font = .largeTitle.bold()) {
-        self.text = text
-        self.font = font
-    }
-
-    var body: some View {
-        Text(text)
-            .font(font)
-            .foregroundStyle(LinearGradient.brand)
+    /// Standard subtle shadow for card elevation
+    func cardShadow() -> some View {
+        shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
     }
 }
 

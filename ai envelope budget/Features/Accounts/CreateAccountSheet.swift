@@ -18,6 +18,8 @@ struct CreateAccountSheet: View {
     @State private var showError = false
     @State private var errorMessage = ""
 
+    @FocusState private var isBalanceFocused: Bool
+
     private var isValid: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && parsedBalance != nil
     }
@@ -33,151 +35,121 @@ struct CreateAccountSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.bgPrimary
-                    .ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: AppDesign.paddingLg) {
+                    // Header Icon
+                    Image(systemName: accountType.icon)
+                        .font(.system(size: 48))
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.top, AppDesign.paddingMd)
+                        .animation(.spring(duration: 0.3), value: accountType)
 
-                ScrollView {
-                    VStack(spacing: AppDesign.paddingLg) {
-                        // Header Icon
-                        Image(systemName: accountType.icon)
-                            .font(.system(size: 48))
-                            .foregroundStyle(LinearGradient.brand)
-                            .shadow(color: .accentCyan.opacity(0.3), radius: 16)
-                            .padding(.top, AppDesign.paddingMd)
-                            .animation(.spring(duration: 0.3), value: accountType)
+                    // Form Fields
+                    VStack(spacing: AppDesign.paddingMd) {
+                        // Account Name
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Account Name")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                                .tracking(0.5)
 
-                        // Form Fields
-                        VStack(spacing: AppDesign.paddingMd) {
-                            // Account Name
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Account Name")
-                                    .font(.caption)
+                            TextField("e.g., My Checking", text: $name)
+                                .textFieldStyle(.plain)
+                                .formFieldBackground()
+                                .autocorrectionDisabled()
+                        }
+
+                        // Account Type
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Account Type")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                                .tracking(0.5)
+
+                            Picker("Account Type", selection: $accountType) {
+                                ForEach(AccountType.allCases) { type in
+                                    Text(type.displayName).tag(type)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+
+                        // Starting Balance
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(accountType.isCreditCard ? "Current Balance Owed" : "Starting Balance")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                                .tracking(0.5)
+
+                            HStack {
+                                Text("$")
+                                    .font(.title3)
                                     .fontWeight(.semibold)
-                                    .foregroundStyle(Color.textSecondary)
-                                    .textCase(.uppercase)
-                                    .tracking(0.5)
+                                    .foregroundStyle(.secondary)
 
-                                TextField("e.g., My Checking", text: $name)
+                                TextField("0.00", text: $balanceText)
                                     .textFieldStyle(.plain)
-                                    .padding(AppDesign.paddingSm + 4)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                            .fill(Color.bgInput)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                                    .stroke(Color.borderSubtle, lineWidth: 1)
-                                            )
-                                    )
-                                    .foregroundStyle(Color.textPrimary)
-                                    .autocorrectionDisabled()
+                                    .keyboardType(.decimalPad)
+                                    .font(.title3)
+                                    .focused($isBalanceFocused)
                             }
-
-                            // Account Type
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Account Type")
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(Color.textSecondary)
-                                    .textCase(.uppercase)
-                                    .tracking(0.5)
-
-                                Picker("Account Type", selection: $accountType) {
-                                    ForEach(AccountType.allCases) { type in
-                                        Text(type.displayName).tag(type)
-                                    }
-                                }
-                                .pickerStyle(.segmented)
-                                .colorMultiply(.accentCyan)
-                            }
-
-                            // Starting Balance
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(accountType.isCreditCard ? "Current Balance Owed" : "Starting Balance")
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(Color.textSecondary)
-                                    .textCase(.uppercase)
-                                    .tracking(0.5)
-
-                                HStack {
-                                    Text("$")
-                                        .font(.title3)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(Color.textSecondary)
-
-                                    TextField("0.00", text: $balanceText)
-                                        .textFieldStyle(.plain)
-                                        .keyboardType(.decimalPad)
-                                        .foregroundStyle(Color.textPrimary)
-                                        .font(.title3)
-                                }
-                                .padding(AppDesign.paddingSm + 4)
-                                .background(
-                                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                        .fill(Color.bgInput)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                                .stroke(Color.borderSubtle, lineWidth: 1)
-                                        )
-                                )
-                            }
+                            .formFieldBackground()
                         }
-                        .padding(.horizontal, AppDesign.paddingLg)
-
-                        // Info
-                        HStack(spacing: 8) {
-                            Image(systemName: "info.circle.fill")
-                                .foregroundStyle(Color.accentCyan)
-                                .font(.caption)
-
-                            Text(accountType.isCreditCard
-                                 ? "Enter the current balance owed on this card."
-                                 : "Enter the current balance available in this account.")
-                                .font(.caption)
-                                .foregroundStyle(Color.textMuted)
-                        }
-                        .padding(.horizontal, AppDesign.paddingLg)
-
-                        // Create Button
-                        Button {
-                            Task { await createAccount() }
-                        } label: {
-                            HStack(spacing: 8) {
-                                if isSubmitting {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                        .tint(.white)
-                                } else {
-                                    Image(systemName: "plus.circle.fill")
-                                }
-                                Text("Create Account")
-                            }
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(
-                                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                    .fill(isValid ? AnyShapeStyle(LinearGradient.brand) : AnyShapeStyle(Color.textMuted.opacity(0.3)))
-                            )
-                            .glowShadow()
-                        }
-                        .disabled(!isValid || isSubmitting)
-                        .padding(.horizontal, AppDesign.paddingLg)
-                        .padding(.top, AppDesign.paddingSm)
                     }
+                    .padding(.horizontal, AppDesign.paddingLg)
+
+                    // Info
+                    HStack(spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundStyle(Color.accentCyan)
+                            .font(.caption)
+
+                        Text(accountType.isCreditCard
+                             ? "Enter the current balance owed on this card."
+                             : "Enter the current balance available in this account.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, AppDesign.paddingLg)
+
+                    // Create Button
+                    Button {
+                        Task { await createAccount() }
+                    } label: {
+                        HStack(spacing: 8) {
+                            if isSubmitting {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .tint(.white)
+                            } else {
+                                Image(systemName: "plus.circle.fill")
+                            }
+                            Text("Create Account")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!isValid || isSubmitting)
+                    .padding(.horizontal, AppDesign.paddingLg)
+                    .padding(.top, AppDesign.paddingSm)
                 }
             }
             .navigationTitle("New Account")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundStyle(Color.textSecondary)
+                }
+                KeyboardDoneToolbar {
+                    isBalanceFocused = false
                 }
             }
             .alert("Error", isPresented: $showError) {

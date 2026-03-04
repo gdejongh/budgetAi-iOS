@@ -12,29 +12,32 @@ struct AccountsView: View {
     @State private var showCreateSheet = false
 
     var body: some View {
-        ZStack {
-            Color.bgPrimary
-                .ignoresSafeArea()
-
+        Group {
             if accountService.isLoading && accountService.accounts.isEmpty {
-                loadingView
+                ProgressView()
             } else if accountService.accounts.isEmpty {
-                emptyStateView
+                ContentUnavailableView {
+                    Label("No Accounts Yet", systemImage: "building.columns.fill")
+                } description: {
+                    Text("Add a bank account or credit card to start tracking your finances.")
+                } actions: {
+                    Button("Add Account", systemImage: "plus.circle.fill") {
+                        showCreateSheet = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             } else {
                 accountsList
             }
         }
         .navigationTitle("Accounts")
         .navigationBarTitleDisplayMode(.large)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showCreateSheet = true
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundStyle(LinearGradient.brand)
-                        .font(.title3)
+                    Image(systemName: "plus")
                 }
             }
         }
@@ -57,73 +60,73 @@ struct AccountsView: View {
     // MARK: - Accounts List
 
     private var accountsList: some View {
-        ScrollView {
-            VStack(spacing: AppDesign.paddingLg) {
-                // Net Worth Summary
-                netWorthCard
+        List {
+            // Net Worth Summary
+            Section {
+                VStack(spacing: 8) {
+                    Text("Net Worth")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
 
-                // Error banner
-                if let error = accountService.errorMessage {
-                    errorBanner(error)
+                    Text(accountService.netWorth.asCurrency())
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundStyle(.primary)
+
+                    HStack(spacing: 24) {
+                        summaryItem(
+                            label: "Bank Accounts",
+                            value: accountService.totalBankBalance.asCurrency(),
+                            color: .green
+                        )
+
+                        if !accountService.creditCards.isEmpty {
+                            summaryItem(
+                                label: "Credit Cards",
+                                value: accountService.totalCreditCardDebt.asCurrency(),
+                                color: .orange
+                            )
+                        }
+                    }
+                    .padding(.top, 4)
                 }
+                .frame(maxWidth: .infinity)
+            }
 
-                // Bank Accounts Section
-                if !accountService.bankAccounts.isEmpty {
-                    accountSection(
-                        title: "Bank Accounts",
-                        icon: "building.columns.fill",
-                        accounts: accountService.bankAccounts
-                    )
+            // Error banner
+            if let error = accountService.errorMessage {
+                ErrorBannerView(message: error) {
+                    await accountService.fetchAccounts()
                 }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            }
 
-                // Credit Cards Section
-                if !accountService.creditCards.isEmpty {
-                    accountSection(
-                        title: "Credit Cards",
-                        icon: "creditcard.fill",
-                        accounts: accountService.creditCards
-                    )
+            // Bank Accounts Section
+            if !accountService.bankAccounts.isEmpty {
+                Section("Bank Accounts") {
+                    ForEach(accountService.bankAccounts, id: \.id) { account in
+                        NavigationLink(value: account.id ?? "") {
+                            AccountCardView(account: account)
+                        }
+                    }
                 }
             }
-            .padding(.horizontal, AppDesign.paddingLg)
-            .padding(.vertical, AppDesign.paddingMd)
-        }
-    }
 
-    // MARK: - Net Worth Card
-
-    private var netWorthCard: some View {
-        VStack(spacing: 8) {
-            Text("Net Worth")
-                .font(.subheadline)
-                .foregroundStyle(Color.textSecondary)
-
-            GradientText(
-                formatCurrency(accountService.netWorth),
-                font: .system(size: 32, weight: .bold, design: .rounded)
-            )
-
-            HStack(spacing: AppDesign.paddingLg) {
-                summaryItem(
-                    label: "Bank Accounts",
-                    value: formatCurrency(accountService.totalBankBalance),
-                    color: .success
-                )
-
-                if !accountService.creditCards.isEmpty {
-                    summaryItem(
-                        label: "Credit Cards",
-                        value: formatCurrency(accountService.totalCreditCardDebt),
-                        color: .warning
-                    )
+            // Credit Cards Section
+            if !accountService.creditCards.isEmpty {
+                Section("Credit Cards") {
+                    ForEach(accountService.creditCards, id: \.id) { account in
+                        NavigationLink(value: account.id ?? "") {
+                            AccountCardView(account: account)
+                        }
+                    }
                 }
             }
-            .padding(.top, 4)
         }
-        .frame(maxWidth: .infinity)
-        .padding(AppDesign.paddingLg)
-        .glassCard()
+        .listStyle(.insetGrouped)
     }
+
+    // MARK: - Helpers
 
     private func summaryItem(label: String, value: String, color: Color) -> some View {
         VStack(spacing: 2) {
@@ -132,157 +135,8 @@ struct AccountsView: View {
                 .foregroundStyle(color)
             Text(label)
                 .font(.caption2)
-                .foregroundStyle(Color.textMuted)
+                .foregroundStyle(.secondary)
         }
-    }
-
-    // MARK: - Account Section
-
-    private func accountSection(
-        title: String,
-        icon: String,
-        accounts: [BankAccountResponse]
-    ) -> some View {
-        VStack(alignment: .leading, spacing: AppDesign.paddingSm) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.subheadline)
-                    .foregroundStyle(LinearGradient.brand)
-
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Color.textSecondary)
-                    .textCase(.uppercase)
-                    .tracking(0.8)
-
-                Spacer()
-
-                Text("\(accounts.count)")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(Color.textMuted)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(Color.bgCardHover)
-                    )
-            }
-            .padding(.horizontal, 4)
-
-            ForEach(Array(accounts.enumerated()), id: \.element.id) { index, account in
-                NavigationLink(value: account.id ?? "") {
-                    AccountCardView(account: account)
-                }
-                .buttonStyle(.plain)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(
-                    .spring(duration: 0.4).delay(Double(index) * 0.05),
-                    value: accounts.count
-                )
-            }
-        }
-    }
-
-    // MARK: - Empty State
-
-    private var emptyStateView: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "building.columns.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(LinearGradient.brand)
-                .shadow(color: .accentCyan.opacity(0.3), radius: 16)
-
-            VStack(spacing: 8) {
-                Text("No Accounts Yet")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(Color.textPrimary)
-
-                Text("Add a bank account or credit card to start tracking your finances.")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-            }
-
-            Button {
-                showCreateSheet = true
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Add Account")
-                }
-                .font(.headline)
-                .foregroundStyle(.white)
-                .padding(.vertical, 14)
-                .padding(.horizontal, 32)
-                .background(LinearGradient.brand)
-                .clipShape(RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd))
-                .glowShadow()
-            }
-        }
-    }
-
-    // MARK: - Loading
-
-    private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .controlSize(.large)
-                .tint(.accentCyan)
-
-            Text("Loading accounts…")
-                .font(.subheadline)
-                .foregroundStyle(Color.textSecondary)
-        }
-    }
-
-    // MARK: - Error
-
-    private func errorBanner(_ message: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(Color.danger)
-
-            Text(message)
-                .font(.caption)
-                .foregroundStyle(Color.textPrimary)
-
-            Spacer()
-
-            Button {
-                Task {
-                    await accountService.fetchAccounts()
-                }
-            } label: {
-                Text("Retry")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Color.accentCyan)
-            }
-        }
-        .padding(AppDesign.paddingSm)
-        .background(
-            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                .fill(Color.danger.opacity(0.1))
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                        .stroke(Color.danger.opacity(0.3), lineWidth: 1)
-                )
-        )
-    }
-
-    // MARK: - Helpers
-
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$0.00"
     }
 }
 

@@ -24,6 +24,7 @@ struct EditTransactionSheet: View {
     @State private var selectedEnvelopeId: String
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @FocusState private var isAmountFocused: Bool
 
     init(transaction: TransactionResponse) {
         self.transaction = transaction
@@ -53,10 +54,7 @@ struct EditTransactionSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.bgPrimary.ignoresSafeArea()
-
-                ScrollView {
+            ScrollView {
                     VStack(spacing: AppDesign.paddingLg) {
                         // Type Toggle
                         typeToggle
@@ -91,6 +89,7 @@ struct EditTransactionSheet: View {
                                     .foregroundStyle(Color.textSecondary)
                                 TextField("0.00", text: $amount)
                                     .keyboardType(.decimalPad)
+                                    .focused($isAmountFocused)
                                     .textFieldStyle(.plain)
                                     .foregroundStyle(Color.textPrimary)
                             }
@@ -113,7 +112,6 @@ struct EditTransactionSheet: View {
                             .datePickerStyle(.compact)
                             .labelsHidden()
                             .tint(.accentCyan)
-                            .colorScheme(.dark)
                         }
 
                         // Envelope
@@ -143,33 +141,26 @@ struct EditTransactionSheet: View {
                             Group {
                                 if isSaving {
                                     ProgressView()
-                                        .tint(.white)
                                 } else {
                                     Text("Save Changes")
                                 }
                             }
-                            .font(.headline)
-                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                    .fill(isValid ? LinearGradient.brand : LinearGradient(colors: [.textMuted], startPoint: .leading, endPoint: .trailing))
-                            )
-                            .glowShadow()
                         }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
                         .disabled(!isValid || isSaving)
                     }
                     .padding(AppDesign.paddingLg)
-                }
             }
             .navigationTitle("Edit Transaction")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color.textSecondary)
+                }
+                KeyboardDoneToolbar {
+                    isAmountFocused = false
                 }
             }
         }
@@ -195,7 +186,6 @@ struct EditTransactionSheet: View {
                 withAnimation(.easeInOut(duration: 0.2)) { isDeposit = true }
             }
         }
-        .glassCard(cornerRadius: AppDesign.cornerRadiusMd)
     }
 
     private func toggleButton(label: String, icon: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
@@ -227,16 +217,7 @@ struct EditTransactionSheet: View {
                 .foregroundStyle(Color.textSecondary)
 
             content()
-                .padding(AppDesign.paddingSm + 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                        .fill(Color.bgInput)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                                .stroke(Color.borderSubtle, lineWidth: 1)
-                        )
-                )
+                .formFieldBackground()
         }
     }
 

@@ -13,43 +13,43 @@ struct LoginView: View {
     @State private var password = ""
     @State private var showPassword = false
     @State private var navigateToRegister = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable {
+        case email, password
+    }
 
     private var isFormValid: Bool {
         !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }
 
     var body: some View {
-        ZStack {
-            // Background gradient
-            backgroundView
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer(minLength: 60)
 
-            ScrollView {
-                VStack(spacing: 32) {
-                    Spacer(minLength: 60)
+                // Logo & Title
+                headerView
 
-                    // Logo & Title
-                    headerView
-
-                    // Form
-                    VStack(spacing: 20) {
-                        // Error banner
-                        if let error = authService.errorMessage {
-                            errorBanner(error)
-                        }
-
-                        emailField
-                        passwordField
-                        signInButton
+                // Form
+                VStack(spacing: 20) {
+                    if let error = authService.errorMessage {
+                        ErrorBannerView(message: error)
                     }
-                    .padding(.horizontal, AppDesign.paddingLg)
 
-                    // Register link
-                    registerLink
-
-                    Spacer(minLength: 40)
+                    emailField
+                    passwordField
+                    signInButton
                 }
+                .padding(.horizontal, AppDesign.paddingLg)
+
+                registerLink
+
+                Spacer(minLength: 40)
             }
         }
+        .background(Color(.systemBackground))
+        .onDisappear { authService.clearError() }
         .navigationDestination(isPresented: $navigateToRegister) {
             RegisterView()
         }
@@ -57,36 +57,19 @@ struct LoginView: View {
 
     // MARK: - Subviews
 
-    private var backgroundView: some View {
-        Color.bgPrimary
-            .ignoresSafeArea()
-            .overlay(
-                RadialGradient(
-                    colors: [
-                        Color.accentCyan.opacity(0.08),
-                        Color.accentViolet.opacity(0.04),
-                        Color.clear,
-                    ],
-                    center: .top,
-                    startRadius: 100,
-                    endRadius: 500
-                )
-                .ignoresSafeArea()
-            )
-    }
-
     private var headerView: some View {
         VStack(spacing: 12) {
             Image(systemName: "wallet.bifold.fill")
                 .font(.system(size: 56))
-                .foregroundStyle(LinearGradient.brand)
-                .shadow(color: .accentCyan.opacity(0.4), radius: 16, x: 0, y: 4)
+                .foregroundStyle(Color.accentColor)
 
-            GradientText("BudgetAI", font: .system(size: 34, weight: .bold))
+            Text("BudgetAI")
+                .font(.largeTitle.bold())
+                .foregroundStyle(Color.accentColor)
 
             Text("Envelope budgeting, powered by AI")
                 .font(.subheadline)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -95,30 +78,23 @@ struct LoginView: View {
             Text("Email")
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
 
             HStack {
                 Image(systemName: "envelope.fill")
-                    .foregroundStyle(Color.textMuted)
+                    .foregroundStyle(.tertiary)
                     .frame(width: 20)
 
-                TextField("", text: $email, prompt: Text("you@example.com").foregroundStyle(Color.textMuted))
+                TextField("you@example.com", text: $email)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.emailAddress)
                     .textContentType(.emailAddress)
                     .autocorrectionDisabled()
-                    .foregroundStyle(Color.textPrimary)
+                    .submitLabel(.next)
+                    .focused($focusedField, equals: .email)
+                    .onSubmit { focusedField = .password }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                    .fill(Color.bgInput)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                            .stroke(Color.borderSubtle, lineWidth: 1)
-                    )
-            )
+            .formFieldBackground()
         }
     }
 
@@ -127,109 +103,82 @@ struct LoginView: View {
             Text("Password")
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
 
             HStack {
                 Image(systemName: "lock.fill")
-                    .foregroundStyle(Color.textMuted)
+                    .foregroundStyle(.tertiary)
                     .frame(width: 20)
 
                 Group {
                     if showPassword {
-                        TextField("", text: $password, prompt: Text("Enter your password").foregroundStyle(Color.textMuted))
+                        TextField("Enter your password", text: $password)
                     } else {
-                        SecureField("", text: $password, prompt: Text("Enter your password").foregroundStyle(Color.textMuted))
+                        SecureField("Enter your password", text: $password)
                     }
                 }
                 .textContentType(.password)
-                .foregroundStyle(Color.textPrimary)
+                .submitLabel(.go)
+                .focused($focusedField, equals: .password)
+                .onSubmit { submitForm() }
 
                 Button {
                     showPassword.toggle()
                 } label: {
                     Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
-                        .foregroundStyle(Color.textMuted)
+                        .foregroundStyle(.tertiary)
                 }
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+                .accessibilityLabel(showPassword ? "Hide password" : "Show password")
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                    .fill(Color.bgInput)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                            .stroke(Color.borderSubtle, lineWidth: 1)
-                    )
-            )
+            .formFieldBackground()
         }
     }
 
     private var signInButton: some View {
         Button {
-            Task {
-                await authService.login(email: email.trimmingCharacters(in: .whitespaces), password: password)
-            }
+            submitForm()
         } label: {
             Group {
                 if authService.isLoading {
                     ProgressView()
-                        .tint(.bgPrimary)
                 } else {
                     Text("Sign In")
-                        .fontWeight(.semibold)
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
         }
-        .background(
-            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                .fill(isFormValid ? LinearGradient.brand : LinearGradient(colors: [Color.textMuted.opacity(0.3)], startPoint: .leading, endPoint: .trailing))
-        )
-        .foregroundStyle(isFormValid ? Color.bgPrimary : Color.textMuted)
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
         .disabled(!isFormValid || authService.isLoading)
-        .glowShadow(color: isFormValid ? .accentCyan : .clear, radius: isFormValid ? 8 : 0)
-        .animation(.easeInOut(duration: 0.2), value: isFormValid)
     }
 
     private var registerLink: some View {
         HStack(spacing: 4) {
             Text("Don't have an account?")
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
 
             Button("Sign Up") {
                 authService.clearError()
                 navigateToRegister = true
             }
-            .foregroundStyle(Color.accentCyan)
             .fontWeight(.semibold)
         }
         .font(.subheadline)
     }
 
-    private func errorBanner(_ message: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.circle.fill")
-                .foregroundStyle(Color.danger)
+    // MARK: - Actions
 
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(Color.danger)
-                .multilineTextAlignment(.leading)
-
-            Spacer()
+    private func submitForm() {
+        guard isFormValid, !authService.isLoading else { return }
+        focusedField = nil
+        Task {
+            await authService.login(
+                email: email.trimmingCharacters(in: .whitespaces),
+                password: password
+            )
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                .fill(Color.danger.opacity(0.1))
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                        .stroke(Color.danger.opacity(0.3), lineWidth: 1)
-                )
-        )
-        .transition(.opacity.combined(with: .move(edge: .top)))
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: authService.errorMessage)
     }
 }
 

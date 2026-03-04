@@ -20,7 +20,7 @@ struct RootView: View {
                 TabView(selection: $selectedTab) {
                     Tab("Dashboard", systemImage: "house.fill", value: .dashboard) {
                         NavigationStack {
-                            DashboardView()
+                            DashboardView(selectedTab: $selectedTab)
                         }
                     }
 
@@ -43,17 +43,15 @@ struct RootView: View {
                     }
                 }
                 .tint(.accentCyan)
-                .toolbarBackground(Color.bgSurface, for: .tabBar)
-                .toolbarBackground(.visible, for: .tabBar)
                 .environment(accountService)
                 .environment(envelopeService)
                 .environment(transactionService)
-                .transition(.opacity.combined(with: .move(edge: .trailing)))
+                .transition(.opacity)
             } else {
                 NavigationStack {
                     LoginView()
                 }
-                .transition(.opacity.combined(with: .move(edge: .leading)))
+                .transition(.opacity)
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.85), value: authService.isAuthenticated)

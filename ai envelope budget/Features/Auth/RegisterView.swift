@@ -16,6 +16,11 @@ struct RegisterView: View {
     @State private var confirmPassword = ""
     @State private var showPassword = false
     @State private var showConfirmPassword = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable {
+        case email, password, confirmPassword
+    }
 
     private var isFormValid: Bool {
         let trimmedEmail = email.trimmingCharacters(in: .whitespaces)
@@ -29,79 +34,48 @@ struct RegisterView: View {
     }
 
     var body: some View {
-        ZStack {
-            backgroundView
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer(minLength: 40)
 
-            ScrollView {
-                VStack(spacing: 32) {
-                    Spacer(minLength: 40)
+                headerView
 
-                    headerView
-
-                    VStack(spacing: 20) {
-                        if let error = authService.errorMessage {
-                            errorBanner(error)
-                        }
-
-                        emailField
-                        passwordField
-                        confirmPasswordField
-                        createAccountButton
+                VStack(spacing: 20) {
+                    if let error = authService.errorMessage {
+                        ErrorBannerView(message: error)
                     }
-                    .padding(.horizontal, AppDesign.paddingLg)
 
-                    signInLink
-
-                    Spacer(minLength: 40)
+                    emailField
+                    passwordField
+                    confirmPasswordField
+                    createAccountButton
                 }
+                .padding(.horizontal, AppDesign.paddingLg)
+
+                signInLink
+
+                Spacer(minLength: 40)
             }
         }
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    authService.clearError()
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .foregroundStyle(Color.textSecondary)
-                }
-            }
-        }
+        .background(Color(.systemBackground))
+        .onDisappear { authService.clearError() }
     }
 
     // MARK: - Subviews
-
-    private var backgroundView: some View {
-        Color.bgPrimary
-            .ignoresSafeArea()
-            .overlay(
-                RadialGradient(
-                    colors: [
-                        Color.accentViolet.opacity(0.08),
-                        Color.accentCyan.opacity(0.04),
-                        Color.clear,
-                    ],
-                    center: .topTrailing,
-                    startRadius: 80,
-                    endRadius: 450
-                )
-                .ignoresSafeArea()
-            )
-    }
 
     private var headerView: some View {
         VStack(spacing: 12) {
             Image(systemName: "person.badge.plus.fill")
                 .font(.system(size: 50))
-                .foregroundStyle(LinearGradient.brand)
-                .shadow(color: .accentViolet.opacity(0.4), radius: 16, x: 0, y: 4)
+                .foregroundStyle(Color.accentColor)
 
-            GradientText("Create Account", font: .system(size: 28, weight: .bold))
+            Text("Create Account")
+                .font(.title.bold())
+                .foregroundStyle(Color.accentColor)
 
             Text("Start your budgeting journey")
                 .font(.subheadline)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -110,23 +84,23 @@ struct RegisterView: View {
             Text("Email")
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
 
             HStack {
                 Image(systemName: "envelope.fill")
-                    .foregroundStyle(Color.textMuted)
+                    .foregroundStyle(.tertiary)
                     .frame(width: 20)
 
-                TextField("", text: $email, prompt: Text("you@example.com").foregroundStyle(Color.textMuted))
+                TextField("you@example.com", text: $email)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.emailAddress)
                     .textContentType(.emailAddress)
                     .autocorrectionDisabled()
-                    .foregroundStyle(Color.textPrimary)
+                    .submitLabel(.next)
+                    .focused($focusedField, equals: .email)
+                    .onSubmit { focusedField = .password }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(inputBackground)
+            .formFieldBackground()
         }
     }
 
@@ -135,38 +109,41 @@ struct RegisterView: View {
             Text("Password")
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
 
             HStack {
                 Image(systemName: "lock.fill")
-                    .foregroundStyle(Color.textMuted)
+                    .foregroundStyle(.tertiary)
                     .frame(width: 20)
 
                 Group {
                     if showPassword {
-                        TextField("", text: $password, prompt: Text("Min. 8 characters").foregroundStyle(Color.textMuted))
+                        TextField("Min. 8 characters", text: $password)
                     } else {
-                        SecureField("", text: $password, prompt: Text("Min. 8 characters").foregroundStyle(Color.textMuted))
+                        SecureField("Min. 8 characters", text: $password)
                     }
                 }
                 .textContentType(.newPassword)
-                .foregroundStyle(Color.textPrimary)
+                .submitLabel(.next)
+                .focused($focusedField, equals: .password)
+                .onSubmit { focusedField = .confirmPassword }
 
                 Button {
                     showPassword.toggle()
                 } label: {
                     Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
-                        .foregroundStyle(Color.textMuted)
+                        .foregroundStyle(.tertiary)
                 }
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+                .accessibilityLabel(showPassword ? "Hide password" : "Show password")
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(inputBackground)
+            .formFieldBackground()
 
             if !password.isEmpty && password.count < 8 {
                 Text("Password must be at least 8 characters")
                     .font(.caption2)
-                    .foregroundStyle(Color.danger)
+                    .foregroundStyle(.red)
             }
         }
     }
@@ -176,129 +153,88 @@ struct RegisterView: View {
             Text("Confirm Password")
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
 
             HStack {
                 Image(systemName: "lock.fill")
-                    .foregroundStyle(Color.textMuted)
+                    .foregroundStyle(.tertiary)
                     .frame(width: 20)
 
                 Group {
                     if showConfirmPassword {
-                        TextField("", text: $confirmPassword, prompt: Text("Re-enter your password").foregroundStyle(Color.textMuted))
+                        TextField("Re-enter your password", text: $confirmPassword)
                     } else {
-                        SecureField("", text: $confirmPassword, prompt: Text("Re-enter your password").foregroundStyle(Color.textMuted))
+                        SecureField("Re-enter your password", text: $confirmPassword)
                     }
                 }
                 .textContentType(.newPassword)
-                .foregroundStyle(Color.textPrimary)
+                .submitLabel(.go)
+                .focused($focusedField, equals: .confirmPassword)
+                .onSubmit { submitForm() }
 
                 Button {
                     showConfirmPassword.toggle()
                 } label: {
                     Image(systemName: showConfirmPassword ? "eye.slash.fill" : "eye.fill")
-                        .foregroundStyle(Color.textMuted)
+                        .foregroundStyle(.tertiary)
                 }
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+                .accessibilityLabel(showConfirmPassword ? "Hide password" : "Show password")
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                    .fill(Color.bgInput)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                            .stroke(!passwordsMatch ? Color.danger.opacity(0.5) : Color.borderSubtle, lineWidth: 1)
-                    )
-            )
+            .formFieldBackground()
 
             if !passwordsMatch {
                 Text("Passwords do not match")
                     .font(.caption2)
-                    .foregroundStyle(Color.danger)
+                    .foregroundStyle(.red)
             }
         }
     }
 
     private var createAccountButton: some View {
         Button {
-            Task {
-                await authService.register(
-                    email: email.trimmingCharacters(in: .whitespaces),
-                    password: password
-                )
-            }
+            submitForm()
         } label: {
             Group {
                 if authService.isLoading {
                     ProgressView()
-                        .tint(.bgPrimary)
                 } else {
                     Text("Create Account")
-                        .fontWeight(.semibold)
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
         }
-        .background(
-            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                .fill(isFormValid ? LinearGradient.brand : LinearGradient(colors: [Color.textMuted.opacity(0.3)], startPoint: .leading, endPoint: .trailing))
-        )
-        .foregroundStyle(isFormValid ? Color.bgPrimary : Color.textMuted)
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
         .disabled(!isFormValid || authService.isLoading)
-        .glowShadow(color: isFormValid ? .accentViolet : .clear, radius: isFormValid ? 8 : 0)
-        .animation(.easeInOut(duration: 0.2), value: isFormValid)
     }
 
     private var signInLink: some View {
         HStack(spacing: 4) {
             Text("Already have an account?")
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(.secondary)
 
             Button("Sign In") {
                 authService.clearError()
                 dismiss()
             }
-            .foregroundStyle(Color.accentCyan)
             .fontWeight(.semibold)
         }
         .font(.subheadline)
     }
 
-    // MARK: - Helpers
+    // MARK: - Actions
 
-    private var inputBackground: some View {
-        RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-            .fill(Color.bgInput)
-            .overlay(
-                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                    .stroke(Color.borderSubtle, lineWidth: 1)
+    private func submitForm() {
+        guard isFormValid, !authService.isLoading else { return }
+        focusedField = nil
+        Task {
+            await authService.register(
+                email: email.trimmingCharacters(in: .whitespaces),
+                password: password
             )
-    }
-
-    private func errorBanner(_ message: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.circle.fill")
-                .foregroundStyle(Color.danger)
-
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(Color.danger)
-                .multilineTextAlignment(.leading)
-
-            Spacer()
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                .fill(Color.danger.opacity(0.1))
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                        .stroke(Color.danger.opacity(0.3), lineWidth: 1)
-                )
-        )
-        .transition(.opacity.combined(with: .move(edge: .top)))
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: authService.errorMessage)
     }
 }
 

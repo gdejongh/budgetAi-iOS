@@ -35,21 +35,28 @@ struct TransactionsView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color.bgPrimary
-                .ignoresSafeArea()
-
+        Group {
+            @Bindable var service = transactionService
             if transactionService.isLoading && transactionService.transactions.isEmpty {
-                loadingView
+                ProgressView()
             } else if transactionService.transactions.isEmpty && transactionService.searchText.isEmpty {
-                emptyStateView
+                ContentUnavailableView {
+                    Label("No Transactions Yet", systemImage: "arrow.left.arrow.right.circle.fill")
+                } description: {
+                    Text("Add your first transaction to start tracking spending.")
+                } actions: {
+                    Button("Add Transaction") {
+                        showCreateTransaction = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             } else {
                 transactionsList
             }
         }
         .navigationTitle("Transactions")
         .navigationBarTitleDisplayMode(.large)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .searchable(text: searchTextBinding, prompt: "Search transactions")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -77,9 +84,34 @@ struct TransactionsView: View {
                         }
                     }
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundStyle(LinearGradient.brand)
-                        .font(.title3)
+                    Image(systemName: "plus")
+                }
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    ForEach(TransactionService.SortField.allCases, id: \.self) { field in
+                        Button {
+                            transactionService.sortField = field
+                        } label: {
+                            if transactionService.sortField == field {
+                                Label(field.rawValue, systemImage: "checkmark")
+                            } else {
+                                Text(field.rawValue)
+                            }
+                        }
+                    }
+                    Divider()
+                    Button {
+                        transactionService.sortAscending.toggle()
+                    } label: {
+                        Label(
+                            transactionService.sortAscending ? "Descending" : "Ascending",
+                            systemImage: transactionService.sortAscending ? "arrow.down" : "arrow.up"
+                        )
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
                 }
             }
         }
@@ -128,7 +160,6 @@ struct TransactionsView: View {
             if transactionService.transactions.isEmpty {
                 await transactionService.fetchTransactions()
             }
-            // Ensure we have accounts & envelopes for name lookups
             if accountService.accounts.isEmpty {
                 await accountService.fetchAccounts()
             }
@@ -138,295 +169,101 @@ struct TransactionsView: View {
         }
     }
 
+    /// Binding to transactionService.searchText (needs @Bindable in local scope for .searchable)
+    private var searchTextBinding: Binding<String> {
+        Binding(
+            get: { transactionService.searchText },
+            set: { transactionService.searchText = $0 }
+        )
+    }
+
     // MARK: - Transactions List
 
     private var transactionsList: some View {
-        ScrollView {
-            VStack(spacing: AppDesign.paddingLg) {
-                // Search bar
-                searchBar
+        List {
+            // Summary
+            Section {
+                HStack(spacing: AppDesign.paddingLg) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(transactionService.totalIncome.asCurrency())
+                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                            .foregroundStyle(.green)
+                        Text("Income")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
 
-                // Summary
-                summaryRow
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(transactionService.totalExpenses.asCurrency())
+                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                            .foregroundStyle(.red)
+                        Text("Expenses")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
 
-                // Sort controls
-                sortControls
+                    Spacer()
 
-                // Error banner
-                if let error = transactionService.errorMessage {
-                    errorBanner(error)
+                    Text("\(transactionService.displayTransactions.count) txns")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
+            }
 
-                // Transactions
-                let displayed = transactionService.displayTransactions
-                if displayed.isEmpty {
-                    noResultsView
-                } else {
-                    LazyVStack(spacing: 8) {
-                        ForEach(displayed) { txn in
-                            TransactionCardView(
-                                transaction: txn,
-                                accountName: txn.bankAccountId.flatMap { accountMap[$0] },
-                                envelopeName: txn.envelopeId.flatMap { envelopeMap[$0] }
-                            )
-                            .contextMenu {
-                                if txn.isEditable {
-                                    Button {
-                                        editTransaction = txn
-                                    } label: {
-                                        Label("Edit", systemImage: "pencil")
-                                    }
-                                }
+            // Error banner
+            if let error = transactionService.errorMessage {
+                Section {
+                    ErrorBannerView(message: error) {
+                        await transactionService.fetchTransactions()
+                    }
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            }
 
-                                Button(role: .destructive) {
-                                    deleteTransaction = txn
+            // Transactions
+            let displayed = transactionService.displayTransactions
+            if displayed.isEmpty {
+                ContentUnavailableView.search
+            } else {
+                Section {
+                    ForEach(displayed) { txn in
+                        TransactionCardView(
+                            transaction: txn,
+                            accountName: txn.bankAccountId.flatMap { accountMap[$0] },
+                            envelopeName: txn.envelopeId.flatMap { envelopeMap[$0] }
+                        )
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                deleteTransaction = txn
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+
+                            if txn.isEditable {
+                                Button {
+                                    editTransaction = txn
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Label("Edit", systemImage: "pencil")
                                 }
+                                .tint(.orange)
                             }
                         }
                     }
                 }
             }
-            .padding(.horizontal, AppDesign.paddingLg)
-            .padding(.vertical, AppDesign.paddingMd)
         }
-    }
-
-    // MARK: - Search Bar
-
-    @MainActor
-    private var searchBar: some View {
-        @Bindable var service = transactionService
-        return HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(Color.textMuted)
-
-            TextField("Search transactions…", text: $service.searchText)
-                .textFieldStyle(.plain)
-                .foregroundStyle(Color.textPrimary)
-
-            if !transactionService.searchText.isEmpty {
-                Button {
-                    transactionService.searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(Color.textMuted)
-                }
-            }
-        }
-        .padding(AppDesign.paddingSm + 4)
-        .background(
-            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                .fill(Color.bgInput)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                        .stroke(Color.borderSubtle, lineWidth: 1)
-                )
-        )
-    }
-
-    // MARK: - Summary Row
-
-    private var summaryRow: some View {
-        HStack(spacing: AppDesign.paddingLg) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(formatCurrency(transactionService.totalIncome))
-                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    .foregroundStyle(Color.success)
-                Text("Income")
-                    .font(.caption2)
-                    .foregroundStyle(Color.textMuted)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(formatCurrency(transactionService.totalExpenses))
-                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    .foregroundStyle(Color.danger)
-                Text("Expenses")
-                    .font(.caption2)
-                    .foregroundStyle(Color.textMuted)
-            }
-
-            Spacer()
-
-            Text("\(transactionService.displayTransactions.count) txns")
-                .font(.caption)
-                .foregroundStyle(Color.textMuted)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Capsule().fill(Color.bgCardHover))
-        }
-        .padding(AppDesign.paddingSm + 4)
-        .glassCard()
-    }
-
-    // MARK: - Sort Controls
-
-    private var sortControls: some View {
-        HStack(spacing: 8) {
-            Text("Sort:")
-                .font(.caption2)
-                .foregroundStyle(Color.textMuted)
-
-            ForEach(TransactionService.SortField.allCases, id: \.self) { field in
-                sortChip(field)
-            }
-
-            Spacer()
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    transactionService.sortAscending.toggle()
-                }
-            } label: {
-                Image(systemName: transactionService.sortAscending ? "arrow.up" : "arrow.down")
-                    .font(.caption)
-                    .foregroundStyle(Color.accentCyan)
-                    .padding(6)
-                    .background(Circle().fill(Color.bgCardHover))
-            }
-        }
-    }
-
-    private func sortChip(_ field: TransactionService.SortField) -> some View {
-        let isActive = transactionService.sortField == field
-        return Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                transactionService.sortField = field
-            }
-        } label: {
-            Text(field.rawValue)
-                .font(.caption)
-                .fontWeight(isActive ? .semibold : .regular)
-                .foregroundStyle(isActive ? Color.textPrimary : Color.textMuted)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule().fill(isActive ? Color.bgCardHover : Color.clear)
-                )
-        }
-    }
-
-    // MARK: - Empty / No Results / Loading
-
-    private var emptyStateView: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "arrow.left.arrow.right.circle.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(LinearGradient.brand)
-                .shadow(color: .accentCyan.opacity(0.3), radius: 16)
-
-            VStack(spacing: 8) {
-                Text("No Transactions Yet")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundStyle(Color.textPrimary)
-
-                Text("Add your first transaction to start tracking spending.")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-            }
-
-            Button {
-                showCreateTransaction = true
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Add Transaction")
-                }
-                .font(.headline)
-                .foregroundStyle(.white)
-                .padding(.vertical, 14)
-                .padding(.horizontal, 32)
-                .background(LinearGradient.brand)
-                .clipShape(RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd))
-                .glowShadow()
-            }
-        }
-    }
-
-    private var noResultsView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "magnifyingglass")
-                .font(.title)
-                .foregroundStyle(Color.textMuted)
-
-            Text("No transactions match your search")
-                .font(.subheadline)
-                .foregroundStyle(Color.textSecondary)
-        }
-        .padding(.vertical, 40)
-    }
-
-    private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .controlSize(.large)
-                .tint(.accentCyan)
-
-            Text("Loading transactions…")
-                .font(.subheadline)
-                .foregroundStyle(Color.textSecondary)
-        }
-    }
-
-    // MARK: - Error
-
-    private func errorBanner(_ message: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(Color.danger)
-
-            Text(message)
-                .font(.caption)
-                .foregroundStyle(Color.textPrimary)
-
-            Spacer()
-
-            Button {
-                Task { await transactionService.fetchTransactions() }
-            } label: {
-                Text("Retry")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Color.accentCyan)
-            }
-        }
-        .padding(AppDesign.paddingSm)
-        .background(
-            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                .fill(Color.danger.opacity(0.1))
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                        .stroke(Color.danger.opacity(0.3), lineWidth: 1)
-                )
-        )
-    }
-
-    // MARK: - Helpers
-
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$0.00"
+        .listStyle(.insetGrouped)
     }
 }
 
 // MARK: - Identifiable Wrappers
 
-/// Wrapper to make BankAccountResponse work with .sheet(item:)
 private struct IdentifiableAccount: Identifiable {
     let account: BankAccountResponse
     var id: String { account.id ?? UUID().uuidString }
 }
 
-/// Wrapper to make TransactionResponse work with .sheet(item:)
 private struct IdentifiableTransaction: Identifiable {
     let transaction: TransactionResponse
     var id: String { transaction.id ?? UUID().uuidString }

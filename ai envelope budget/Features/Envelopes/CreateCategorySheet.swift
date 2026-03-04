@@ -22,91 +22,64 @@ struct CreateCategorySheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.bgPrimary
-                    .ignoresSafeArea()
+            VStack(spacing: AppDesign.paddingLg) {
+                // Header
+                Image(systemName: "folder.fill.badge.plus")
+                    .font(.system(size: 44))
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.top, AppDesign.paddingLg)
 
-                VStack(spacing: AppDesign.paddingLg) {
-                    // Header
-                    Image(systemName: "folder.fill.badge.plus")
-                        .font(.system(size: 44))
-                        .foregroundStyle(LinearGradient.brand)
-                        .shadow(color: .accentCyan.opacity(0.3), radius: 16)
-                        .padding(.top, AppDesign.paddingLg)
+                // Name Field
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Category Name")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
 
-                    // Name Field
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Category Name")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Color.textSecondary)
-                            .textCase(.uppercase)
-                            .tracking(0.5)
-
-                        TextField("e.g., Housing, Food & Dining", text: $name)
-                            .textFieldStyle(.plain)
-                            .padding(AppDesign.paddingSm + 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                    .fill(Color.bgInput)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                            .stroke(Color.borderSubtle, lineWidth: 1)
-                                    )
-                            )
-                            .foregroundStyle(Color.textPrimary)
-                            .autocorrectionDisabled()
-                    }
-                    .padding(.horizontal, AppDesign.paddingLg)
-
-                    // Info
-                    HStack(spacing: 8) {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundStyle(Color.accentCyan)
-                            .font(.caption)
-                        Text("Categories group related envelopes together, like \"Bills\" or \"Savings\".")
-                            .font(.caption)
-                            .foregroundStyle(Color.textMuted)
-                    }
-                    .padding(.horizontal, AppDesign.paddingLg)
-
-                    // Create Button
-                    Button {
-                        Task { await create() }
-                    } label: {
-                        HStack(spacing: 8) {
-                            if isSubmitting {
-                                ProgressView()
-                                    .controlSize(.small)
-                                    .tint(.white)
-                            } else {
-                                Image(systemName: "plus.circle.fill")
-                            }
-                            Text("Create Category")
-                        }
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                .fill(isValid ? AnyShapeStyle(LinearGradient.brand) : AnyShapeStyle(Color.textMuted.opacity(0.3)))
-                        )
-                        .glowShadow()
-                    }
-                    .disabled(!isValid || isSubmitting)
-                    .padding(.horizontal, AppDesign.paddingLg)
-
-                    Spacer()
+                    TextField("e.g., Housing, Food & Dining", text: $name)
+                        .textFieldStyle(.plain)
+                        .formFieldBackground()
+                        .autocorrectionDisabled()
                 }
+                .padding(.horizontal, AppDesign.paddingLg)
+
+                // Info
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundStyle(Color.accentCyan)
+                        .font(.caption)
+                    Text("Categories group related envelopes together, like \"Bills\" or \"Savings\".")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, AppDesign.paddingLg)
+
+                // Create Button
+                Button {
+                    Task { await create() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if isSubmitting {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text("Create Category")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(!isValid || isSubmitting)
+                .padding(.horizontal, AppDesign.paddingLg)
+
+                Spacer()
             }
             .navigationTitle("New Category")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color.textSecondary)
                 }
             }
             .alert("Error", isPresented: $showError) {

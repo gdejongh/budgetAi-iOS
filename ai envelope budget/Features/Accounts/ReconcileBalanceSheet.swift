@@ -18,6 +18,8 @@ struct ReconcileBalanceSheet: View {
     @State private var showError = false
     @State private var errorMessage = ""
 
+    @FocusState private var isBalanceFocused: Bool
+
     private var parsedBalance: Decimal? {
         let cleaned = targetBalanceText
             .replacingOccurrences(of: "$", with: "")
@@ -39,151 +41,134 @@ struct ReconcileBalanceSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.bgPrimary
-                    .ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: AppDesign.paddingLg) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 44))
+                            .foregroundStyle(Color.accentColor)
 
-                ScrollView {
-                    VStack(spacing: AppDesign.paddingLg) {
-                        // Header
-                        VStack(spacing: 8) {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .font(.system(size: 44))
-                                .foregroundStyle(LinearGradient.brand)
-                                .shadow(color: .accentCyan.opacity(0.3), radius: 16)
+                        Text("Reconcile Balance")
+                            .font(.title3)
+                            .fontWeight(.bold)
 
-                            Text("Reconcile Balance")
+                        Text(account.name)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, AppDesign.paddingMd)
+
+                    // Current balance display
+                    VStack(spacing: 4) {
+                        Text("Current Balance")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(account.currentBalance.asCurrency())
+                            .font(.system(.title2, design: .rounded, weight: .bold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(AppDesign.paddingMd)
+                    .background(
+                        RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
+                            .fill(Color(.tertiarySystemFill))
+                    )
+                    .padding(.horizontal, AppDesign.paddingLg)
+
+                    // Target balance input
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Actual Balance")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                            .tracking(0.5)
+
+                        HStack {
+                            Text("$")
                                 .font(.title3)
-                                .fontWeight(.bold)
-                                .foregroundStyle(Color.textPrimary)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
 
-                            Text(account.name)
-                                .font(.subheadline)
-                                .foregroundStyle(Color.textSecondary)
+                            TextField("0.00", text: $targetBalanceText)
+                                .textFieldStyle(.plain)
+                                .keyboardType(.decimalPad)
+                                .font(.title3)
+                                .focused($isBalanceFocused)
                         }
-                        .padding(.top, AppDesign.paddingMd)
+                        .formFieldBackground()
+                    }
+                    .padding(.horizontal, AppDesign.paddingLg)
 
-                        // Current balance display
+                    // Difference preview
+                    if let diff = difference {
                         VStack(spacing: 4) {
-                            Text("Current Balance")
+                            Text("Adjustment")
                                 .font(.caption)
-                                .foregroundStyle(Color.textMuted)
-                            Text(formatCurrency(account.currentBalance))
-                                .font(.system(.title2, design: .rounded, weight: .bold))
-                                .foregroundStyle(Color.textSecondary)
+                                .foregroundStyle(.secondary)
+
+                            HStack(spacing: 4) {
+                                Image(systemName: diff >= 0 ? "arrow.up.right" : "arrow.down.right")
+                                    .font(.caption)
+                                Text(abs(diff).asCurrency())
+                            }
+                            .font(.system(.headline, design: .rounded))
+                            .foregroundStyle(diff >= 0 ? Color.success : Color.danger)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(AppDesign.paddingMd)
-                        .glassCard()
+                        .background(
+                            RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
+                                .fill(Color(.tertiarySystemFill))
+                        )
                         .padding(.horizontal, AppDesign.paddingLg)
-
-                        // Target balance input
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Actual Balance")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(Color.textSecondary)
-                                .textCase(.uppercase)
-                                .tracking(0.5)
-
-                            HStack {
-                                Text("$")
-                                    .font(.title3)
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(Color.textSecondary)
-
-                                TextField("0.00", text: $targetBalanceText)
-                                    .textFieldStyle(.plain)
-                                    .keyboardType(.decimalPad)
-                                    .foregroundStyle(Color.textPrimary)
-                                    .font(.title3)
-                            }
-                            .padding(AppDesign.paddingSm + 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                    .fill(Color.bgInput)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                            .stroke(Color.borderSubtle, lineWidth: 1)
-                                    )
-                            )
-                        }
-                        .padding(.horizontal, AppDesign.paddingLg)
-
-                        // Difference preview
-                        if let diff = difference {
-                            VStack(spacing: 4) {
-                                Text("Adjustment")
-                                    .font(.caption)
-                                    .foregroundStyle(Color.textMuted)
-
-                                HStack(spacing: 4) {
-                                    Image(systemName: diff >= 0 ? "arrow.up.right" : "arrow.down.right")
-                                        .font(.caption)
-                                    Text(formatCurrency(abs(diff)))
-                                }
-                                .font(.system(.headline, design: .rounded))
-                                .foregroundStyle(diff >= 0 ? Color.success : Color.danger)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(AppDesign.paddingMd)
-                            .glassCard()
-                            .padding(.horizontal, AppDesign.paddingLg)
-                            .animation(.spring(duration: 0.3), value: diff)
-                        }
-
-                        // Info
-                        HStack(spacing: 8) {
-                            Image(systemName: "info.circle.fill")
-                                .foregroundStyle(Color.accentCyan)
-                                .font(.caption)
-                            Text("This will create an adjustment transaction to match the actual balance.")
-                                .font(.caption)
-                                .foregroundStyle(Color.textMuted)
-                        }
-                        .padding(.horizontal, AppDesign.paddingLg)
-
-                        // Submit button
-                        Button {
-                            Task { await reconcile() }
-                        } label: {
-                            HStack(spacing: 8) {
-                                if isSubmitting {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                        .tint(.white)
-                                } else {
-                                    Image(systemName: "checkmark.circle.fill")
-                                }
-                                Text("Reconcile")
-                            }
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(
-                                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                    .fill(isValid
-                                          ? AnyShapeStyle(LinearGradient.brand)
-                                          : AnyShapeStyle(Color.textMuted.opacity(0.3)))
-                            )
-                            .glowShadow()
-                        }
-                        .disabled(!isValid || isSubmitting)
-                        .padding(.horizontal, AppDesign.paddingLg)
-                        .padding(.top, AppDesign.paddingSm)
+                        .animation(.spring(duration: 0.3), value: diff)
                     }
+
+                    // Info
+                    HStack(spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundStyle(Color.accentCyan)
+                            .font(.caption)
+                        Text("This will create an adjustment transaction to match the actual balance.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, AppDesign.paddingLg)
+
+                    // Submit button
+                    Button {
+                        Task { await reconcile() }
+                    } label: {
+                        HStack(spacing: 8) {
+                            if isSubmitting {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .tint(.white)
+                            } else {
+                                Image(systemName: "checkmark.circle.fill")
+                            }
+                            Text("Reconcile")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!isValid || isSubmitting)
+                    .padding(.horizontal, AppDesign.paddingLg)
+                    .padding(.top, AppDesign.paddingSm)
                 }
             }
             .navigationTitle("Adjust Balance")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundStyle(Color.textSecondary)
+                }
+                KeyboardDoneToolbar {
+                    isBalanceFocused = false
                 }
             }
             .alert("Error", isPresented: $showError) {
@@ -215,15 +200,6 @@ struct ReconcileBalanceSheet: View {
     }
 
     // MARK: - Helpers
-
-    private func formatCurrency(_ amount: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: amount as NSDecimalNumber) ?? "$0.00"
-    }
 
     private func abs(_ value: Decimal) -> Decimal {
         value < 0 ? -value : value
