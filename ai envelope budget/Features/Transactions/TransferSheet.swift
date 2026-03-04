@@ -42,7 +42,7 @@ struct TransferSheet: View {
                             Spacer()
                             Image(systemName: "arrow.triangle.swap")
                                 .font(.system(size: 40))
-                                .foregroundStyle(Color.accentColor)
+                                .foregroundStyle(Color.accentCyan)
                             Spacer()
                         }
                         .padding(.vertical, AppDesign.paddingSm)
@@ -130,7 +130,7 @@ struct TransferSheet: View {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundStyle(Color.warning)
                                 Text("Source and destination must be different accounts.")
-                                    .font(.caption)
+                                    .font(.appCaption)
                                     .foregroundStyle(Color.warning)
                             }
                         }
@@ -138,7 +138,7 @@ struct TransferSheet: View {
                         // Error
                         if let error = errorMessage {
                             Text(error)
-                                .font(.caption)
+                                .font(.appCaption)
                                 .foregroundStyle(Color.danger)
                         }
 
@@ -158,7 +158,7 @@ struct TransferSheet: View {
                             }
                             .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(PrimaryButtonStyle())
                         .controlSize(.large)
                         .disabled(!isValid || isSaving)
                     }
@@ -189,7 +189,7 @@ struct TransferSheet: View {
     private func formSection<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(.caption)
+                .font(.appCaption)
                 .foregroundStyle(Color.textSecondary)
 
             content()

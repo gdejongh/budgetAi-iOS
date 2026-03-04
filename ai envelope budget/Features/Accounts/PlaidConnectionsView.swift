@@ -55,10 +55,12 @@ struct PlaidConnectionsSection: View {
             } header: {
                 HStack {
                     Text("Plaid Connections")
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textSecondary)
                     Spacer()
                     Text("\(plaidService.plaidItems.count)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textMuted)
                 }
             }
             .alert("Sync Complete", isPresented: $showSyncResult) {
@@ -103,7 +105,9 @@ struct PlaidConnectionsSection: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Text(item.institutionName ?? "Unknown Institution")
-                        .font(.headline)
+                        .font(.appBody)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color.textPrimary)
                         .lineLimit(1)
 
                     statusBadge(item.resolvedStatus)
@@ -111,17 +115,17 @@ struct PlaidConnectionsSection: View {
 
                 HStack(spacing: 6) {
                     Text("\(item.accountCount) account\(item.accountCount == 1 ? "" : "s")")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textSecondary)
 
                     if let lastSynced = item.lastSyncedAt {
                         Text("·")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.appCaption)
+                            .foregroundStyle(Color.textMuted)
 
                         Text("Synced \(lastSynced.asFormattedDate())")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.appCaption)
+                            .foregroundStyle(Color.textSecondary)
                     }
                 }
             }

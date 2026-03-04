@@ -20,21 +20,20 @@ struct EnvelopesView: View {
     @State private var editedAllocation = ""
     @State private var detailEnvelopeId: String?
     @FocusState private var allocationFieldFocused: Bool
+    @State private var hasAppeared = false
 
     var body: some View {
         Group {
             if envelopeService.isLoading && envelopeService.envelopes.isEmpty {
                 ProgressView()
             } else if envelopeService.categories.isEmpty {
-                ContentUnavailableView {
-                    Label("No Envelopes Yet", systemImage: "envelope.open.fill")
-                } description: {
-                    Text("Create categories and envelopes to start budgeting your money.")
-                } actions: {
-                    Button("Create Category", systemImage: "folder.badge.plus") {
-                        showCreateCategory = true
-                    }
-                    .buttonStyle(.borderedProminent)
+                EmptyStateView(
+                    icon: "envelope.open.fill",
+                    heading: "No Envelopes Yet",
+                    body: "Create categories and envelopes to start budgeting your money.",
+                    actionLabel: "Create Category"
+                ) {
+                    showCreateCategory = true
                 }
             } else {
                 envelopesList
@@ -118,16 +117,15 @@ struct EnvelopesView: View {
             Section {
                 VStack(spacing: 12) {
                     Text(envelopeService.totalRemaining.asCurrency())
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .foregroundStyle(envelopeService.totalRemaining >= 0 ? Color.primary : Color.red)
+                        .font(.appStatLarge)
+                        .foregroundStyle(envelopeService.totalRemaining >= 0 ? Color.textPrimary : Color.danger)
 
                     Text("remaining to spend")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textSecondary)
 
                     if envelopeService.totalMonthlyAllocated > 0 {
-                        ProgressView(value: overallProgress)
-                            .tint(overallProgressTint)
+                        BrandProgressBar(value: overallProgress, tint: overallProgressTint)
                     }
 
                     HStack(spacing: AppDesign.paddingLg) {
@@ -144,6 +142,7 @@ struct EnvelopesView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 4)
             }
+            .staggeredFadeIn(index: 0, isVisible: hasAppeared)
 
             // Error banner
             if let error = envelopeService.errorMessage {
@@ -161,7 +160,8 @@ struct EnvelopesView: View {
                 categorySection(category)
             }
         }
-        .listStyle(.insetGrouped)
+        .brandListStyle()
+        .onAppear { hasAppeared = true }
         .toolbar {
             KeyboardDoneToolbar {
                 allocationFieldFocused = false
@@ -177,12 +177,14 @@ struct EnvelopesView: View {
                 envelopeService.previousMonth()
             } label: {
                 Image(systemName: "chevron.left")
+                    .foregroundStyle(Color.accentCyan)
             }
 
             Spacer()
 
             Text(envelopeService.viewedMonthString)
-                .font(.headline)
+                .font(.appHeadline)
+                .foregroundStyle(Color.textPrimary)
 
             Spacer()
 
@@ -190,6 +192,7 @@ struct EnvelopesView: View {
                 envelopeService.nextMonth()
             } label: {
                 Image(systemName: "chevron.right")
+                    .foregroundStyle(Color.accentCyan)
             }
         }
     }
@@ -197,10 +200,12 @@ struct EnvelopesView: View {
     private func summaryItem(label: String, value: String) -> some View {
         VStack(spacing: 2) {
             Text(value)
-                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                .font(.appBody)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.textPrimary)
             Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(.appCaption)
+                .foregroundStyle(Color.textSecondary)
         }
     }
 
@@ -233,9 +238,9 @@ struct EnvelopesView: View {
     }
 
     private var overallProgressTint: Color {
-        if overallProgress > 1   { return .red }
-        if overallProgress > 0.85 { return .orange }
-        return .green
+        if overallProgress > 1   { return .danger }
+        if overallProgress > 0.85 { return .warning }
+        return .success
     }
 
     // MARK: - Category Section
@@ -247,8 +252,8 @@ struct EnvelopesView: View {
             if categoryEnvelopes.isEmpty {
                 HStack {
                     Text("No envelopes yet")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textSecondary)
 
                     Spacer()
 
@@ -257,7 +262,8 @@ struct EnvelopesView: View {
                             createEnvelopeCategoryId = category.id
                             showCreateEnvelope = true
                         }
-                        .font(.subheadline)
+                        .font(.appCaption)
+                        .foregroundStyle(Color.accentCyan)
                     }
                 }
             } else {
@@ -300,7 +306,7 @@ struct EnvelopesView: View {
                         } label: {
                             Label("Details", systemImage: "info.circle")
                         }
-                        .tint(.accentColor)
+                        .tint(.accentCyan)
                     }
                 }
             }
@@ -308,15 +314,11 @@ struct EnvelopesView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(category.name)
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textSecondary)
 
                     if category.isCCPayment {
-                        Text("AUTO")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.orange)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1)
-                            .background(Capsule().fill(Color.orange.opacity(0.15)))
+                        BadgeView(text: "AUTO", color: .warning)
                     }
 
                     Spacer()
@@ -327,7 +329,8 @@ struct EnvelopesView: View {
                             showCreateEnvelope = true
                         } label: {
                             Image(systemName: "plus.circle")
-                                .font(.subheadline)
+                                .font(.appCaption)
+                                .foregroundStyle(Color.accentCyan)
                         }
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
@@ -336,8 +339,8 @@ struct EnvelopesView: View {
                             showDeleteCategory = category
                         } label: {
                             Image(systemName: "trash")
-                                .font(.subheadline)
-                                .foregroundStyle(.red)
+                                .font(.appCaption)
+                                .foregroundStyle(Color.danger)
                         }
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
@@ -353,34 +356,37 @@ struct EnvelopesView: View {
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text("Total Debt")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .font(.appCaption)
+                                .foregroundStyle(Color.textMuted)
                             Text(totalDebt.asCurrency())
-                                .font(.caption.weight(.semibold))
+                                .font(.appCaption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Color.textSecondary)
                         }
 
                         VStack(alignment: .leading, spacing: 1) {
                             Text("Funded")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .font(.appCaption)
+                                .foregroundStyle(Color.textMuted)
                             Text(totalFunded.asCurrency())
-                                .font(.caption.weight(.semibold))
+                                .font(.appCaption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Color.textSecondary)
                         }
 
                         Spacer()
 
                         if fullyFunded {
-                            Text("Fully Funded")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(.green)
+                            BadgeView(text: "Fully Funded", color: .success)
                         } else {
                             VStack(alignment: .trailing, spacing: 1) {
                                 Text("Underfunded")
-                                    .font(.caption2)
-                                    .foregroundStyle(.red)
+                                    .font(.appCaption)
+                                    .foregroundStyle(Color.danger)
                                 Text((totalDebt - totalFunded).asCurrency())
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(.red)
+                                    .font(.appCaption)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(Color.danger)
                             }
                         }
                     }

@@ -22,7 +22,11 @@ nonisolated enum AppEnvironment {
     var baseURL: String {
         switch self {
         case .development:
+            #if targetEnvironment(simulator)
             return "http://localhost:8080"
+            #else
+            return "http://10.0.0.233:8080"
+            #endif
         case .production:
             return "https://api.aienvelopebudget.com"
         }

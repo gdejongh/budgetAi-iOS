@@ -57,7 +57,6 @@ struct RegisterView: View {
                 Spacer(minLength: 40)
             }
         }
-        .background(Color(.systemBackground))
         .onDisappear { authService.clearError() }
     }
 
@@ -67,24 +66,24 @@ struct RegisterView: View {
         VStack(spacing: 12) {
             Image(systemName: "person.badge.plus.fill")
                 .font(.system(size: 50))
-                .foregroundStyle(Color.accentColor)
+                .gradientForeground()
 
             Text("Create Account")
-                .font(.title.bold())
-                .foregroundStyle(Color.accentColor)
+                .font(.appTitle)
+                .headingTracking()
+                .gradientForeground()
 
             Text("Start your budgeting journey")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.appSubheadline)
+                .foregroundStyle(Color.textSecondary)
         }
     }
 
     private var emailField: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Email")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
+                .font(.appCaption)
+                .foregroundStyle(Color.textSecondary)
 
             HStack {
                 Image(systemName: "envelope.fill")
@@ -107,9 +106,8 @@ struct RegisterView: View {
     private var passwordField: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Password")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
+                .font(.appCaption)
+                .foregroundStyle(Color.textSecondary)
 
             HStack {
                 Image(systemName: "lock.fill")
@@ -151,9 +149,8 @@ struct RegisterView: View {
     private var confirmPasswordField: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Confirm Password")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
+                .font(.appCaption)
+                .foregroundStyle(Color.textSecondary)
 
             HStack {
                 Image(systemName: "lock.fill")
@@ -205,7 +202,7 @@ struct RegisterView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(PrimaryButtonStyle())
         .controlSize(.large)
         .disabled(!isFormValid || authService.isLoading)
     }
@@ -213,7 +210,7 @@ struct RegisterView: View {
     private var signInLink: some View {
         HStack(spacing: 4) {
             Text("Already have an account?")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
 
             Button("Sign In") {
                 authService.clearError()
@@ -221,7 +218,7 @@ struct RegisterView: View {
             }
             .fontWeight(.semibold)
         }
-        .font(.subheadline)
+        .font(.appSubheadline)
     }
 
     // MARK: - Actions

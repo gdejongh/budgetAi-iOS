@@ -18,6 +18,7 @@ struct DashboardView: View {
     @Binding var selectedTab: AppTab
 
     @State private var isLoading = true
+    @State private var hasAppeared = false
 
     var body: some View {
         Group {
@@ -30,8 +31,8 @@ struct DashboardView: View {
                     Section {
                         if let email = authService.userEmail {
                             Text(email)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .font(.appSubheadline)
+                                .foregroundStyle(Color.textSecondary)
                         }
                     } header: {
                         Text("Welcome")
@@ -42,36 +43,34 @@ struct DashboardView: View {
                         Section("Net Worth") {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(accountService.netWorth.asCurrency())
-                                    .font(.title.bold())
-                                    .fontDesign(.rounded)
+                                    .font(.appStatLarge)
+                                    .headingTracking()
                                     .foregroundStyle(accountService.netWorth >= 0 ? Color.success : Color.danger)
+                                    .contentTransition(.numericText())
                                     .accessibilityLabel(accountService.netWorth.asCurrencyAccessibilityLabel())
 
                                 HStack(spacing: AppDesign.paddingLg) {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(accountService.totalBankBalance.asCurrency())
-                                            .font(.subheadline.weight(.semibold))
-                                            .fontDesign(.rounded)
-                                            .foregroundStyle(Color.success)
-                                        Text("\(accountService.bankAccounts.count) Bank")
-                                            .font(.caption2)
-                                            .foregroundStyle(.tertiary)
-                                    }
+                                    StatCard(
+                                        icon: "building.columns.fill",
+                                        label: "\(accountService.bankAccounts.count) Bank",
+                                        value: accountService.totalBankBalance.asCurrency(),
+                                        iconColor: .success,
+                                        valueColor: .success
+                                    )
 
                                     if !accountService.creditCards.isEmpty {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(accountService.totalCreditCardDebt.asCurrency())
-                                                .font(.subheadline.weight(.semibold))
-                                                .fontDesign(.rounded)
-                                                .foregroundStyle(Color.warning)
-                                            Text("\(accountService.creditCards.count) Credit")
-                                                .font(.caption2)
-                                                .foregroundStyle(.tertiary)
-                                        }
+                                        StatCard(
+                                            icon: "creditcard.fill",
+                                            label: "\(accountService.creditCards.count) Credit",
+                                            value: accountService.totalCreditCardDebt.asCurrency(),
+                                            iconColor: .warning,
+                                            valueColor: .warning
+                                        )
                                     }
                                 }
                             }
                             .padding(.vertical, 4)
+                            .staggeredFadeIn(index: 0, isVisible: hasAppeared)
                         }
                     }
 
@@ -79,6 +78,7 @@ struct DashboardView: View {
                     if !accountService.accounts.isEmpty {
                         Section("AI Insights") {
                             AiAdviceCardView()
+                                .staggeredFadeIn(index: 1, isVisible: hasAppeared)
                         }
                     }
 
@@ -99,18 +99,20 @@ struct DashboardView: View {
                             Label {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Accounts")
-                                        .font(.headline)
+                                        .font(.appHeadline)
+                                        .foregroundStyle(Color.textPrimary)
                                     Text(accountService.accounts.isEmpty
                                          ? "Add your first account"
                                          : "\(accountService.accounts.count) account\(accountService.accounts.count == 1 ? "" : "s")")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .font(.appCaption)
+                                        .foregroundStyle(Color.textSecondary)
                                 }
                             } icon: {
                                 Image(systemName: "building.columns.fill")
-                                    .foregroundStyle(.tint)
+                                    .foregroundStyle(Color.accentCyan)
                             }
                         }
+                        .staggeredFadeIn(index: 2, isVisible: hasAppeared)
 
                         Button {
                             selectedTab = .envelopes
@@ -118,18 +120,20 @@ struct DashboardView: View {
                             Label {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Envelopes")
-                                        .font(.headline)
+                                        .font(.appHeadline)
+                                        .foregroundStyle(Color.textPrimary)
                                     Text(envelopeService.envelopes.isEmpty
                                          ? "Create your first envelope"
                                          : "\(envelopeService.envelopeCount) envelope\(envelopeService.envelopeCount == 1 ? "" : "s")")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .font(.appCaption)
+                                        .foregroundStyle(Color.textSecondary)
                                 }
                             } icon: {
                                 Image(systemName: "envelope.open.fill")
-                                    .foregroundStyle(.tint)
+                                    .foregroundStyle(Color.accentViolet)
                             }
                         }
+                        .staggeredFadeIn(index: 3, isVisible: hasAppeared)
 
                         Button {
                             selectedTab = .transactions
@@ -137,18 +141,20 @@ struct DashboardView: View {
                             Label {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Transactions")
-                                        .font(.headline)
+                                        .font(.appHeadline)
+                                        .foregroundStyle(Color.textPrimary)
                                     Text(transactionService.transactions.isEmpty
                                          ? "Add your first transaction"
                                          : "\(transactionService.transactionCount) transaction\(transactionService.transactionCount == 1 ? "" : "s")")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .font(.appCaption)
+                                        .foregroundStyle(Color.textSecondary)
                                 }
                             } icon: {
                                 Image(systemName: "arrow.left.arrow.right")
-                                    .foregroundStyle(.tint)
+                                    .foregroundStyle(Color.success)
                             }
                         }
+                        .staggeredFadeIn(index: 4, isVisible: hasAppeared)
                     }
 
                     // Sign out
@@ -160,7 +166,7 @@ struct DashboardView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
+                .brandListStyle()
             }
         }
         .navigationTitle("Home")
@@ -171,6 +177,9 @@ struct DashboardView: View {
         .task {
             await loadAllData()
             isLoading = false
+            withAnimation(.springSmooth) {
+                hasAppeared = true
+            }
         }
     }
 

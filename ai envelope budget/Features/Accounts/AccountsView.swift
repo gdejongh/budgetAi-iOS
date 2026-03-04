@@ -15,28 +15,20 @@ struct AccountsView: View {
     @State private var showPlaidMapping = false
     @State private var plaidLinkResult: PlaidLinkResult?
     @State private var isConnectingBank = false
+    @State private var hasAppeared = false
 
     var body: some View {
         Group {
             if accountService.isLoading && accountService.accounts.isEmpty {
                 ProgressView()
             } else if accountService.accounts.isEmpty {
-                ContentUnavailableView {
-                    Label("No Accounts Yet", systemImage: "building.columns.fill")
-                } description: {
-                    Text("Add a bank account or credit card to start tracking your finances.")
-                } actions: {
-                    VStack(spacing: 12) {
-                        Button("Connect Bank", systemImage: "link.circle.fill") {
-                            Task { await connectBank() }
-                        }
-                        .buttonStyle(.borderedProminent)
-
-                        Button("Add Manually", systemImage: "plus.circle.fill") {
-                            showCreateSheet = true
-                        }
-                        .buttonStyle(.bordered)
-                    }
+                EmptyStateView(
+                    icon: "building.columns.fill",
+                    heading: "No Accounts Yet",
+                    body: "Add a bank account or credit card to start tracking your finances.",
+                    actionLabel: "Connect Bank"
+                ) {
+                    Task { await connectBank() }
                 }
             } else {
                 accountsList
@@ -101,25 +93,25 @@ struct AccountsView: View {
             Section {
                 VStack(spacing: 8) {
                     Text("Net Worth")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textSecondary)
 
                     Text(accountService.netWorth.asCurrency())
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
+                        .font(.appStatLarge)
+                        .foregroundStyle(Color.textPrimary)
 
                     HStack(spacing: 24) {
                         summaryItem(
                             label: "Bank Accounts",
                             value: accountService.totalBankBalance.asCurrency(),
-                            color: .green
+                            color: .success
                         )
 
                         if !accountService.creditCards.isEmpty {
                             summaryItem(
                                 label: "Credit Cards",
                                 value: accountService.totalCreditCardDebt.asCurrency(),
-                                color: .orange
+                                color: .warning
                             )
                         }
                     }
@@ -127,6 +119,7 @@ struct AccountsView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
+            .staggeredFadeIn(index: 0, isVisible: hasAppeared)
 
             // Error banner
             if let error = accountService.errorMessage {
@@ -139,30 +132,39 @@ struct AccountsView: View {
 
             // Bank Accounts Section
             if !accountService.bankAccounts.isEmpty {
-                Section("Bank Accounts") {
+                Section {
                     ForEach(accountService.bankAccounts, id: \.id) { account in
                         NavigationLink(value: account.id ?? "") {
                             AccountCardView(account: account)
                         }
                     }
+                } header: {
+                    Text("Bank Accounts")
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textSecondary)
                 }
             }
 
             // Credit Cards Section
             if !accountService.creditCards.isEmpty {
-                Section("Credit Cards") {
+                Section {
                     ForEach(accountService.creditCards, id: \.id) { account in
                         NavigationLink(value: account.id ?? "") {
                             AccountCardView(account: account)
                         }
                     }
+                } header: {
+                    Text("Credit Cards")
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textSecondary)
                 }
             }
 
             // Plaid Connections Section
             PlaidConnectionsSection()
         }
-        .listStyle(.insetGrouped)
+        .brandListStyle()
+        .onAppear { hasAppeared = true }
     }
 
     // MARK: - Actions
@@ -186,11 +188,12 @@ struct AccountsView: View {
     private func summaryItem(label: String, value: String, color: Color) -> some View {
         VStack(spacing: 2) {
             Text(value)
-                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                .font(.appBody)
+                .fontWeight(.semibold)
                 .foregroundStyle(color)
             Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(.appCaption)
+                .foregroundStyle(Color.textSecondary)
         }
     }
 }

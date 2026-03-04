@@ -92,7 +92,7 @@ struct SavingsGoalSheet: View {
                         // Error
                         if let error = errorMessage {
                             Text(error)
-                                .font(.caption)
+                                .font(.appCaption)
                                 .foregroundStyle(Color.danger)
                         }
 
@@ -137,14 +137,14 @@ struct SavingsGoalSheet: View {
         VStack(spacing: 8) {
             Image(systemName: "target")
                 .font(.system(size: 40))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Color.accentCyan)
 
             Text(envelope.name)
-                .font(.headline)
+                .font(.appHeadline)
                 .foregroundStyle(Color.textPrimary)
 
             Text(isEditing ? "Update your savings goal" : "Set a savings goal to stay on track")
-                .font(.caption)
+                .font(.appCaption)
                 .foregroundStyle(Color.textSecondary)
         }
         .padding(.vertical, AppDesign.paddingSm)
@@ -155,7 +155,7 @@ struct SavingsGoalSheet: View {
     private var goalTypePicker: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Goal Type")
-                .font(.caption)
+                .font(.appCaption)
                 .foregroundStyle(Color.textSecondary)
 
             HStack(spacing: 0) {
@@ -175,9 +175,9 @@ struct SavingsGoalSheet: View {
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: type.icon)
-                    .font(.caption)
+                    .font(.appCaption)
                 Text(type.displayName)
-                    .font(.caption2)
+                    .font(.appCaption)
                     .fontWeight(.medium)
             }
             .foregroundStyle(isSelected ? Color.textPrimary : Color.textMuted)
@@ -185,7 +185,7 @@ struct SavingsGoalSheet: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                    .fill(isSelected ? Color.bgCardHover : Color.clear)
+                    .fill(isSelected ? Color(.systemFill) : Color.clear)
             )
         }
         .padding(4)
@@ -286,10 +286,10 @@ struct SavingsGoalSheet: View {
     private func computedRow(_ text: String, icon: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.caption)
+                .font(.appCaption)
                 .foregroundStyle(Color.accentCyan)
             Text(text)
-                .font(.caption)
+                .font(.appCaption)
                 .foregroundStyle(Color.accentCyan)
         }
         .padding(AppDesign.paddingSm + 2)
@@ -297,10 +297,6 @@ struct SavingsGoalSheet: View {
         .background(
             RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
                 .fill(Color.accentCyan.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                        .stroke(Color.accentCyan.opacity(0.15), lineWidth: 1)
-                )
         )
     }
 
@@ -309,17 +305,17 @@ struct SavingsGoalSheet: View {
     private func infoCard(icon: String, text: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon)
-                .font(.caption)
+                .font(.appCaption)
                 .foregroundStyle(Color.textMuted)
             Text(text)
-                .font(.caption)
+                .font(.appCaption)
                 .foregroundStyle(Color.textMuted)
         }
         .padding(AppDesign.paddingSm + 2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                .fill(Color.bgCardHover.opacity(0.5))
+                .fill(Color(.tertiarySystemFill))
         )
     }
 
@@ -341,7 +337,7 @@ struct SavingsGoalSheet: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(PrimaryButtonStyle())
         .controlSize(.large)
         .disabled(!isValid || isSaving)
     }
@@ -354,18 +350,14 @@ struct SavingsGoalSheet: View {
                 Image(systemName: "xmark.circle.fill")
                 Text("Remove Goal")
             }
-            .font(.subheadline)
+            .font(.body)
             .fontWeight(.medium)
             .foregroundStyle(Color.danger)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color.danger.opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                            .stroke(Color.danger.opacity(0.3), lineWidth: 1)
-                    )
             )
         }
     }
@@ -375,7 +367,7 @@ struct SavingsGoalSheet: View {
     private func formSection<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(.caption)
+                .font(.appCaption)
                 .foregroundStyle(Color.textSecondary)
 
             content()

@@ -57,16 +57,16 @@ struct CreateEnvelopeSheet: View {
                     // Header
                     Image(systemName: "envelope.badge.shield.half.filled.fill")
                         .font(.system(size: 44))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Color.accentCyan)
                         .padding(.top, AppDesign.paddingMd)
 
                     VStack(spacing: AppDesign.paddingMd) {
                         // Envelope Name
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Envelope Name")
-                                .font(.caption)
+                                .font(.appCaption)
                                 .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.textSecondary)
                                 .textCase(.uppercase)
                                 .tracking(0.5)
 
@@ -80,9 +80,9 @@ struct CreateEnvelopeSheet: View {
                         if preselectedCategoryId == nil {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("Category")
-                                    .font(.caption)
+                                    .font(.appCaption)
                                     .fontWeight(.semibold)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Color.textSecondary)
                                     .textCase(.uppercase)
                                     .tracking(0.5)
 
@@ -90,10 +90,10 @@ struct CreateEnvelopeSheet: View {
                                     HStack(spacing: 8) {
                                         Image(systemName: "exclamationmark.triangle.fill")
                                             .foregroundStyle(Color.warning)
-                                            .font(.caption)
+                                            .font(.appCaption)
                                         Text("Create a category first before adding envelopes.")
-                                            .font(.caption)
-                                            .foregroundStyle(.tertiary)
+                                            .font(.appCaption)
+                                            .foregroundStyle(Color.textMuted)
                                     }
                                     .formFieldBackground()
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -106,7 +106,7 @@ struct CreateEnvelopeSheet: View {
                                         }
                                     }
                                     .pickerStyle(.menu)
-                                    .tint(.accentColor)
+                                    .tint(.accentCyan)
                                     .formFieldBackground()
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 }
@@ -116,23 +116,23 @@ struct CreateEnvelopeSheet: View {
                         // Monthly Allocation
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Budget for \(envelopeService.viewedMonthString)")
-                                .font(.caption)
+                                .font(.appCaption)
                                 .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.textSecondary)
                                 .textCase(.uppercase)
                                 .tracking(0.5)
 
                             HStack {
                                 Text("$")
-                                    .font(.title3)
+                                    .font(.appTitle)
                                     .fontWeight(.semibold)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Color.textSecondary)
 
                                 TextField("0.00", text: $allocationText)
                                     .textFieldStyle(.plain)
                                     .keyboardType(.decimalPad)
                                     .focused($isAllocationFocused)
-                                    .font(.title3)
+                                    .font(.appTitle)
                             }
                             .formFieldBackground()
                         }
@@ -143,10 +143,10 @@ struct CreateEnvelopeSheet: View {
                     HStack(spacing: 8) {
                         Image(systemName: "info.circle.fill")
                             .foregroundStyle(Color.accentCyan)
-                            .font(.caption)
+                            .font(.appCaption)
                         Text("This sets the initial monthly budget. You can adjust it anytime.")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .font(.appCaption)
+                            .foregroundStyle(Color.textMuted)
                     }
                     .padding(.horizontal, AppDesign.paddingLg)
 
@@ -162,7 +162,7 @@ struct CreateEnvelopeSheet: View {
                             Text("Create Envelope")
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .controlSize(.large)
                     .disabled(!isValid || isSubmitting)
                     .padding(.horizontal, AppDesign.paddingLg)

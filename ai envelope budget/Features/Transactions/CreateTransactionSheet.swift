@@ -126,7 +126,7 @@ struct CreateTransactionSheet: View {
                         // Error
                         if let error = errorMessage {
                             Text(error)
-                                .font(.caption)
+                                .font(.appCaption)
                                 .foregroundStyle(Color.danger)
                                 .padding(.horizontal, AppDesign.paddingSm)
                         }
@@ -144,7 +144,7 @@ struct CreateTransactionSheet: View {
                             }
                             .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(PrimaryButtonStyle())
                         .controlSize(.large)
                         .disabled(!isValid || isSaving)
                     }
@@ -196,9 +196,9 @@ struct CreateTransactionSheet: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.caption)
+                    .font(.appCaption)
                 Text(label)
-                    .font(.subheadline)
+                    .font(.appBody)
                     .fontWeight(.medium)
             }
             .foregroundStyle(isSelected ? Color.textPrimary : Color.textMuted)
@@ -206,7 +206,7 @@ struct CreateTransactionSheet: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
-                    .fill(isSelected ? Color.bgCardHover : Color.clear)
+                    .fill(isSelected ? Color(.systemFill) : Color.clear)
             )
         }
         .padding(4)
@@ -217,7 +217,7 @@ struct CreateTransactionSheet: View {
     private func formSection<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(.caption)
+                .font(.appCaption)
                 .foregroundStyle(Color.textSecondary)
 
             content()

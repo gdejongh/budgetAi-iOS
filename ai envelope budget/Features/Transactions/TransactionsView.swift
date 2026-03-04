@@ -18,6 +18,7 @@ struct TransactionsView: View {
     @State private var showCCPayment: BankAccountResponse?
     @State private var editTransaction: TransactionResponse?
     @State private var deleteTransaction: TransactionResponse?
+    @State private var hasAppeared = false
 
     /// Account name lookup
     private var accountMap: [String: String] {
@@ -41,15 +42,13 @@ struct TransactionsView: View {
             if transactionService.isLoading && transactionService.transactions.isEmpty {
                 ProgressView()
             } else if transactionService.transactions.isEmpty && transactionService.searchText.isEmpty {
-                ContentUnavailableView {
-                    Label("No Transactions Yet", systemImage: "arrow.left.arrow.right.circle.fill")
-                } description: {
-                    Text("Add your first transaction to start tracking spending.")
-                } actions: {
-                    Button("Add Transaction") {
-                        showCreateTransaction = true
-                    }
-                    .buttonStyle(.borderedProminent)
+                EmptyStateView(
+                    icon: "arrow.left.arrow.right.circle.fill",
+                    heading: "No Transactions Yet",
+                    body: "Add your first transaction to start tracking spending.",
+                    actionLabel: "Add Transaction"
+                ) {
+                    showCreateTransaction = true
                 }
             } else {
                 transactionsList
@@ -187,29 +186,32 @@ struct TransactionsView: View {
                 HStack(spacing: AppDesign.paddingLg) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(transactionService.totalIncome.asCurrency())
-                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                            .foregroundStyle(.green)
+                            .font(.appBody)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Color.success)
                         Text("Income")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .font(.appCaption)
+                            .foregroundStyle(Color.textSecondary)
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(transactionService.totalExpenses.asCurrency())
-                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                            .foregroundStyle(.red)
+                            .font(.appBody)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Color.danger)
                         Text("Expenses")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .font(.appCaption)
+                            .foregroundStyle(Color.textSecondary)
                     }
 
                     Spacer()
 
                     Text("\(transactionService.displayTransactions.count) txns")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textMuted)
                 }
             }
+            .staggeredFadeIn(index: 0, isVisible: hasAppeared)
 
             // Error banner
             if let error = transactionService.errorMessage {
@@ -247,14 +249,15 @@ struct TransactionsView: View {
                                 } label: {
                                     Label("Edit", systemImage: "pencil")
                                 }
-                                .tint(.orange)
+                                .tint(.warning)
                             }
                         }
                     }
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        .brandListStyle()
+        .onAppear { hasAppeared = true }
     }
 }
 

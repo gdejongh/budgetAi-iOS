@@ -32,35 +32,36 @@ struct AccountCardView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Text(account.name)
-                        .font(.headline)
+                        .font(.appHeadline)
+                        .foregroundStyle(Color.textPrimary)
                         .lineLimit(1)
 
                     if accountType == .savings {
-                        typeBadge("Savings", color: .accentViolet)
+                        BadgeView(text: "Savings", color: .accentViolet)
                     }
 
                     if account.isPlaidLinked {
-                        linkedBadge
+                        BadgeView(text: "Linked", color: .accentCyan, icon: "link")
                     }
                 }
 
                 HStack(spacing: 6) {
                     if let masked = account.maskedNumber {
                         Text(masked)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.appCaption)
+                            .foregroundStyle(Color.textMuted)
                     }
 
                     if account.maskedNumber != nil && account.institutionName != nil {
                         Text("·")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.appCaption)
+                            .foregroundStyle(Color.textMuted)
                     }
 
                     if let institution = account.institutionName {
                         Text(institution)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.appCaption)
+                            .foregroundStyle(Color.textMuted)
                             .lineLimit(1)
                     }
                 }
@@ -71,12 +72,12 @@ struct AccountCardView: View {
             // Balance
             VStack(alignment: .trailing, spacing: 2) {
                 Text(account.currentBalance.asCurrency())
-                    .font(.system(.body, design: .rounded, weight: .semibold))
+                    .font(.appNumber())
                     .foregroundStyle(balanceColor)
 
                 Text(balanceLabel)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.appLabel)
+                    .foregroundStyle(Color.textSecondary)
             }
         }
         .accessibilityElement(children: .combine)
@@ -87,42 +88,11 @@ struct AccountCardView: View {
     private var iconView: some View {
         Image(systemName: accountType.icon)
             .font(.title3)
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(accountType.isCreditCard ? Color.accentOrange : Color.accentCyan)
             .frame(width: 40, height: 40)
             .background(
                 RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                    .fill(Color.accentColor.opacity(0.1))
+                    .fill((accountType.isCreditCard ? Color.accentOrange : Color.accentCyan).opacity(0.12))
             )
-    }
-
-    private func typeBadge(_ text: String, color: Color) -> some View {
-        Text(text)
-            .font(.caption2)
-            .fontWeight(.semibold)
-            .foregroundStyle(color)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(
-                Capsule()
-                    .fill(color.opacity(0.15))
-            )
-    }
-
-    private var linkedBadge: some View {
-        HStack(spacing: 2) {
-            Image(systemName: "link")
-                .font(.caption2)
-                .fontWeight(.bold)
-            Text("Linked")
-                .font(.caption2)
-                .fontWeight(.semibold)
-        }
-        .foregroundStyle(Color.accentCyan)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(
-            Capsule()
-                .fill(Color.accentCyan.opacity(0.15))
-        )
     }
 }

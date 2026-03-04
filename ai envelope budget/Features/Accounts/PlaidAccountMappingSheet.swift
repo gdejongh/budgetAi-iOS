@@ -86,13 +86,13 @@ struct PlaidAccountMappingSheet: View {
 
             if let name = linkResult.institutionName {
                 Text(name)
-                    .font(.title3)
+                    .font(.appTitle)
                     .fontWeight(.bold)
             }
 
             Text("\(linkResult.accounts.count) account\(linkResult.accounts.count == 1 ? "" : "s") found")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.appBody)
+                .foregroundStyle(Color.textSecondary)
         }
     }
 
@@ -105,29 +105,29 @@ struct PlaidAccountMappingSheet: View {
                 Toggle(isOn: mapping.isSelected) {
                     HStack(spacing: 10) {
                         Image(systemName: mapping.wrappedValue.accountType.icon)
-                            .font(.title3)
-                            .foregroundStyle(Color.accentColor)
+                            .font(.appTitle)
+                            .foregroundStyle(Color.accentCyan)
                             .frame(width: 32)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(mapping.wrappedValue.plaidAccount.name)
-                                .font(.subheadline)
+                                .font(.appBody)
                                 .fontWeight(.medium)
 
                             HStack(spacing: 4) {
                                 if let masked = mapping.wrappedValue.plaidAccount.maskedNumber {
                                     Text(masked)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .font(.appCaption)
+                                        .foregroundStyle(Color.textSecondary)
                                 }
 
                                 Text("·")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.appCaption)
+                                    .foregroundStyle(Color.textMuted)
 
                                 Text(mapping.wrappedValue.accountType.displayName)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.appCaption)
+                                    .foregroundStyle(Color.textSecondary)
                             }
                         }
                     }
@@ -142,9 +142,9 @@ struct PlaidAccountMappingSheet: View {
                     // Custom name
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Account Name")
-                            .font(.caption)
+                            .font(.appCaption)
                             .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.textSecondary)
                             .textCase(.uppercase)
                             .tracking(0.5)
 
@@ -157,9 +157,9 @@ struct PlaidAccountMappingSheet: View {
                     // Account type picker
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Account Type")
-                            .font(.caption)
+                            .font(.appCaption)
                             .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.textSecondary)
                             .textCase(.uppercase)
                             .tracking(0.5)
 
@@ -174,9 +174,9 @@ struct PlaidAccountMappingSheet: View {
                     // Link to existing account (optional)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Link To")
-                            .font(.caption)
+                            .font(.appCaption)
                             .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.textSecondary)
                             .textCase(.uppercase)
                             .tracking(0.5)
 
@@ -209,11 +209,11 @@ struct PlaidAccountMappingSheet: View {
         HStack(spacing: 8) {
             Image(systemName: "info.circle.fill")
                 .foregroundStyle(Color.accentCyan)
-                .font(.caption)
+                .font(.appCaption)
 
             Text("Selected accounts will be linked via Plaid for automatic balance and transaction syncing.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.appCaption)
+                .foregroundStyle(Color.textSecondary)
         }
         .padding(.horizontal, AppDesign.paddingLg)
     }
@@ -235,7 +235,7 @@ struct PlaidAccountMappingSheet: View {
                 Text("Import \(selectedCount) Account\(selectedCount == 1 ? "" : "s")")
             }
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(PrimaryButtonStyle())
         .controlSize(.large)
         .disabled(!isValid || isSubmitting)
         .padding(.horizontal, AppDesign.paddingLg)

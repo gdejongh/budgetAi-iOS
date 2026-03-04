@@ -26,15 +26,15 @@ struct CreateCategorySheet: View {
                 // Header
                 Image(systemName: "folder.fill.badge.plus")
                     .font(.system(size: 44))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Color.accentCyan)
                     .padding(.top, AppDesign.paddingLg)
 
                 // Name Field
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Category Name")
-                        .font(.caption)
+                        .font(.appCaption)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.textSecondary)
                         .textCase(.uppercase)
                         .tracking(0.5)
 
@@ -49,10 +49,10 @@ struct CreateCategorySheet: View {
                 HStack(spacing: 8) {
                     Image(systemName: "info.circle.fill")
                         .foregroundStyle(Color.accentCyan)
-                        .font(.caption)
+                        .font(.appCaption)
                     Text("Categories group related envelopes together, like \"Bills\" or \"Savings\".")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textMuted)
                 }
                 .padding(.horizontal, AppDesign.paddingLg)
 
@@ -68,7 +68,7 @@ struct CreateCategorySheet: View {
                         Text("Create Category")
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButtonStyle())
                 .controlSize(.large)
                 .disabled(!isValid || isSubmitting)
                 .padding(.horizontal, AppDesign.paddingLg)

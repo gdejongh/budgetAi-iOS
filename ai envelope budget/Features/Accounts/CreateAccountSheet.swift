@@ -40,7 +40,7 @@ struct CreateAccountSheet: View {
                     // Header Icon
                     Image(systemName: accountType.icon)
                         .font(.system(size: 48))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Color.accentCyan)
                         .padding(.top, AppDesign.paddingMd)
                         .animation(.spring(duration: 0.3), value: accountType)
 
@@ -49,9 +49,9 @@ struct CreateAccountSheet: View {
                         // Account Name
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Account Name")
-                                .font(.caption)
+                                .font(.appCaption)
                                 .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.textSecondary)
                                 .textCase(.uppercase)
                                 .tracking(0.5)
 
@@ -64,9 +64,9 @@ struct CreateAccountSheet: View {
                         // Account Type
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Account Type")
-                                .font(.caption)
+                                .font(.appCaption)
                                 .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.textSecondary)
                                 .textCase(.uppercase)
                                 .tracking(0.5)
 
@@ -81,22 +81,22 @@ struct CreateAccountSheet: View {
                         // Starting Balance
                         VStack(alignment: .leading, spacing: 6) {
                             Text(accountType.isCreditCard ? "Current Balance Owed" : "Starting Balance")
-                                .font(.caption)
+                                .font(.appCaption)
                                 .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.textSecondary)
                                 .textCase(.uppercase)
                                 .tracking(0.5)
 
                             HStack {
                                 Text("$")
-                                    .font(.title3)
+                                    .font(.appTitle)
                                     .fontWeight(.semibold)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Color.textSecondary)
 
                                 TextField("0.00", text: $balanceText)
                                     .textFieldStyle(.plain)
                                     .keyboardType(.decimalPad)
-                                    .font(.title3)
+                                    .font(.appTitle)
                                     .focused($isBalanceFocused)
                             }
                             .formFieldBackground()
@@ -108,13 +108,13 @@ struct CreateAccountSheet: View {
                     HStack(spacing: 8) {
                         Image(systemName: "info.circle.fill")
                             .foregroundStyle(Color.accentCyan)
-                            .font(.caption)
+                            .font(.appCaption)
 
                         Text(accountType.isCreditCard
                              ? "Enter the current balance owed on this card."
                              : "Enter the current balance available in this account.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.appCaption)
+                            .foregroundStyle(Color.textSecondary)
                     }
                     .padding(.horizontal, AppDesign.paddingLg)
 
@@ -133,7 +133,7 @@ struct CreateAccountSheet: View {
                             Text("Create Account")
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .controlSize(.large)
                     .disabled(!isValid || isSubmitting)
                     .padding(.horizontal, AppDesign.paddingLg)

@@ -97,7 +97,7 @@ struct AccountDetailView: View {
                         .disabled(isDeleting)
                     }
                 }
-                .listStyle(.insetGrouped)
+                .brandListStyle()
             } else {
                 ContentUnavailableView(
                     "Account Not Found",
@@ -135,7 +135,7 @@ struct AccountDetailView: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle.fill")
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(Color.accentCyan)
                             .font(.title3)
                     }
                 }
@@ -172,48 +172,27 @@ struct AccountDetailView: View {
             // Icon
             Image(systemName: accountType.icon)
                 .font(.system(size: 44))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(accountType.isCreditCard ? Color.accentOrange : Color.accentCyan)
 
             // Balance
             VStack(spacing: 4) {
                 Text(accountType.isCreditCard ? "Balance Owed" : "Available Balance")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.appSubheadline)
+                    .foregroundStyle(Color.textSecondary)
 
                 Text(account.currentBalance.asCurrency())
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .font(.appStatLarge)
+                    .headingTracking()
                     .foregroundStyle(balanceColor(for: account))
+                    .contentTransition(.numericText())
             }
 
             // Type badge
             HStack(spacing: 8) {
-                Text(accountType.displayName)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Color.accentViolet)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(Color.accentViolet.opacity(0.15))
-                    )
+                BadgeView(text: accountType.displayName, color: .accentViolet)
 
                 if account.isPlaidLinked {
-                    HStack(spacing: 3) {
-                        Image(systemName: "link")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                        Text("Linked")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                    }
-                    .foregroundStyle(Color.accentCyan)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(Color.accentCyan.opacity(0.15))
-                    )
+                    BadgeView(text: "Linked", color: .accentCyan, icon: "link")
                 }
             }
         }

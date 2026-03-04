@@ -48,54 +48,54 @@ struct ReconcileBalanceSheet: View {
                     VStack(spacing: 8) {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.system(size: 44))
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(Color.accentCyan)
 
                         Text("Reconcile Balance")
-                            .font(.title3)
+                            .font(.appTitle)
                             .fontWeight(.bold)
 
                         Text(account.name)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .font(.appBody)
+                            .foregroundStyle(Color.textSecondary)
                     }
                     .padding(.top, AppDesign.paddingMd)
 
                     // Current balance display
                     VStack(spacing: 4) {
                         Text("Current Balance")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.appCaption)
+                            .foregroundStyle(Color.textSecondary)
                         Text(account.currentBalance.asCurrency())
-                            .font(.system(.title2, design: .rounded, weight: .bold))
-                            .foregroundStyle(.secondary)
+                            .font(.appStatLarge)
+                            .foregroundStyle(Color.textSecondary)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(AppDesign.paddingMd)
                     .background(
                         RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                            .fill(Color(.tertiarySystemFill))
+                            .fill(Color(.secondarySystemGroupedBackground))
                     )
                     .padding(.horizontal, AppDesign.paddingLg)
 
                     // Target balance input
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Actual Balance")
-                            .font(.caption)
+                            .font(.appCaption)
                             .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.textSecondary)
                             .textCase(.uppercase)
                             .tracking(0.5)
 
                         HStack {
                             Text("$")
-                                .font(.title3)
+                                .font(.appTitle)
                                 .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.textSecondary)
 
                             TextField("0.00", text: $targetBalanceText)
                                 .textFieldStyle(.plain)
                                 .keyboardType(.decimalPad)
-                                .font(.title3)
+                                .font(.appTitle)
                                 .focused($isBalanceFocused)
                         }
                         .formFieldBackground()
@@ -106,22 +106,22 @@ struct ReconcileBalanceSheet: View {
                     if let diff = difference {
                         VStack(spacing: 4) {
                             Text("Adjustment")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.appCaption)
+                                .foregroundStyle(Color.textSecondary)
 
                             HStack(spacing: 4) {
                                 Image(systemName: diff >= 0 ? "arrow.up.right" : "arrow.down.right")
-                                    .font(.caption)
+                                    .font(.appCaption)
                                 Text(abs(diff).asCurrency())
                             }
-                            .font(.system(.headline, design: .rounded))
+                            .font(.appHeadline)
                             .foregroundStyle(diff >= 0 ? Color.success : Color.danger)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(AppDesign.paddingMd)
                         .background(
                             RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                .fill(Color(.tertiarySystemFill))
+                                .fill(Color(.secondarySystemGroupedBackground))
                         )
                         .padding(.horizontal, AppDesign.paddingLg)
                         .animation(.spring(duration: 0.3), value: diff)
@@ -131,10 +131,10 @@ struct ReconcileBalanceSheet: View {
                     HStack(spacing: 8) {
                         Image(systemName: "info.circle.fill")
                             .foregroundStyle(Color.accentCyan)
-                            .font(.caption)
+                            .font(.appCaption)
                         Text("This will create an adjustment transaction to match the actual balance.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.appCaption)
+                            .foregroundStyle(Color.textSecondary)
                     }
                     .padding(.horizontal, AppDesign.paddingLg)
 
@@ -153,7 +153,7 @@ struct ReconcileBalanceSheet: View {
                             Text("Reconcile")
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .controlSize(.large)
                     .disabled(!isValid || isSubmitting)
                     .padding(.horizontal, AppDesign.paddingLg)

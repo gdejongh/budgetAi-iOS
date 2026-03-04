@@ -32,22 +32,22 @@ struct AiAdviceCardView: View {
         VStack(alignment: .leading, spacing: AppDesign.paddingSm + 4) {
             Label {
                 Text("AI Financial Insights")
-                    .font(.headline)
+                    .font(.appHeadline)
             } icon: {
                 Image(systemName: "sparkles")
                     .foregroundStyle(LinearGradient.brand)
             }
 
             Text("Get personalized advice based on your accounts, envelopes, and spending patterns.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.appSubheadline)
+                .foregroundStyle(Color.textSecondary)
 
             Button {
                 Task { await aiAdviceService.fetchAdvice() }
             } label: {
                 Text("Get AI Advice")
             }
-            .buttonStyle(PrimaryButtonStyle(isEnabled: true))
+            .buttonStyle(GradientButtonStyle())
         }
         .padding(.vertical, 4)
     }
@@ -56,12 +56,11 @@ struct AiAdviceCardView: View {
 
     private var loadingContent: some View {
         VStack(spacing: AppDesign.paddingMd) {
-            ProgressView()
-                .controlSize(.regular)
+            LoadingDots()
 
             Text("Analyzing your finances…")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.appSubheadline)
+                .foregroundStyle(Color.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, AppDesign.paddingMd)
@@ -74,7 +73,7 @@ struct AiAdviceCardView: View {
             // Header
             Label {
                 Text("AI Financial Insights")
-                    .font(.headline)
+                    .font(.appHeadline)
             } icon: {
                 Image(systemName: "sparkles")
                     .foregroundStyle(LinearGradient.brand)
@@ -82,8 +81,8 @@ struct AiAdviceCardView: View {
 
             // Markdown-rendered advice text
             Text(advice.parsedMarkdown)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
+                .font(.appSubheadline)
+                .foregroundStyle(Color.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -95,7 +94,7 @@ struct AiAdviceCardView: View {
                     if let generatedAt = advice.formattedGeneratedAt {
                         Text("Generated \(generatedAt)")
                             .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Color.textMuted)
                     }
 
                     Text(advice.refreshesRemainingText)
@@ -127,7 +126,7 @@ struct AiAdviceCardView: View {
         VStack(alignment: .leading, spacing: AppDesign.paddingSm) {
             Label {
                 Text("AI Financial Insights")
-                    .font(.headline)
+                    .font(.appHeadline)
             } icon: {
                 Image(systemName: "sparkles")
                     .foregroundStyle(LinearGradient.brand)
@@ -138,8 +137,8 @@ struct AiAdviceCardView: View {
                     .foregroundStyle(Color.warning)
 
                 Text("Daily advice limit reached. Try again tomorrow.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.appSubheadline)
+                    .foregroundStyle(Color.textSecondary)
             }
         }
         .padding(.vertical, 4)
@@ -151,7 +150,7 @@ struct AiAdviceCardView: View {
         VStack(alignment: .leading, spacing: AppDesign.paddingSm + 4) {
             Label {
                 Text("AI Financial Insights")
-                    .font(.headline)
+                    .font(.appHeadline)
             } icon: {
                 Image(systemName: "sparkles")
                     .foregroundStyle(LinearGradient.brand)

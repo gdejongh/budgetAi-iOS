@@ -21,22 +21,17 @@ struct TransactionCardView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(transaction.displayTitle)
-                        .font(.subheadline)
+                        .font(.appSubheadline)
                         .fontWeight(.medium)
                         .foregroundStyle(Color.textPrimary)
                         .lineLimit(1)
 
                     if transaction.resolvedType != .standard {
-                        typeBadge
+                        BadgeView(text: transaction.resolvedType.displayName, color: badgeColor)
                     }
 
                     if transaction.pending == true {
-                        Text("PENDING")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(Color.warning)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(Capsule().fill(Color.warning.opacity(0.15)))
+                        BadgeView(text: "PENDING", color: .warning)
                     }
                 }
 
@@ -73,16 +68,15 @@ struct TransactionCardView: View {
             // Amount + Date
             VStack(alignment: .trailing, spacing: 3) {
                 Text(formatAmount(transaction.amount))
-                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    .font(.appNumber(.subheadline))
                     .foregroundStyle(transaction.isIncome ? Color.success : Color.danger)
 
                 Text(transaction.formattedDate)
-                    .font(.caption2)
+                    .font(.appLabel)
                     .foregroundStyle(Color.textMuted)
             }
         }
-        .padding(AppDesign.paddingSm + 4)
-        .glassCard()
+        .padding(.vertical, 4)
     }
 
     // MARK: - Icon View
@@ -118,18 +112,7 @@ struct TransactionCardView: View {
     }
 
     private var iconBackground: Color {
-        iconColor.opacity(0.15)
-    }
-
-    // MARK: - Type Badge
-
-    private var typeBadge: some View {
-        Text(transaction.resolvedType.displayName)
-            .font(.system(size: 8, weight: .bold))
-            .foregroundStyle(badgeColor)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(Capsule().fill(badgeColor.opacity(0.15)))
+        iconColor.opacity(0.12)
     }
 
     private var badgeColor: Color {

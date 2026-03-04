@@ -48,7 +48,6 @@ struct LoginView: View {
                 Spacer(minLength: 40)
             }
         }
-        .background(Color(.systemBackground))
         .onDisappear { authService.clearError() }
         .navigationDestination(isPresented: $navigateToRegister) {
             RegisterView()
@@ -61,24 +60,24 @@ struct LoginView: View {
         VStack(spacing: 12) {
             Image(systemName: "wallet.bifold.fill")
                 .font(.system(size: 56))
-                .foregroundStyle(Color.accentColor)
+                .gradientForeground()
 
             Text("BudgetAI")
-                .font(.largeTitle.bold())
-                .foregroundStyle(Color.accentColor)
+                .font(.appLargeTitle)
+                .headingTracking()
+                .gradientForeground()
 
             Text("Envelope budgeting, powered by AI")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.appSubheadline)
+                .foregroundStyle(Color.textSecondary)
         }
     }
 
     private var emailField: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Email")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
+                .font(.appCaption)
+                .foregroundStyle(Color.textSecondary)
 
             HStack {
                 Image(systemName: "envelope.fill")
@@ -101,9 +100,8 @@ struct LoginView: View {
     private var passwordField: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Password")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
+                .font(.appCaption)
+                .foregroundStyle(Color.textSecondary)
 
             HStack {
                 Image(systemName: "lock.fill")
@@ -128,7 +126,6 @@ struct LoginView: View {
                     Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
                         .foregroundStyle(.tertiary)
                 }
-                .frame(minWidth: 44, minHeight: 44)
                 .contentShape(Rectangle())
                 .accessibilityLabel(showPassword ? "Hide password" : "Show password")
             }
@@ -149,7 +146,7 @@ struct LoginView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(PrimaryButtonStyle())
         .controlSize(.large)
         .disabled(!isFormValid || authService.isLoading)
     }
@@ -157,7 +154,7 @@ struct LoginView: View {
     private var registerLink: some View {
         HStack(spacing: 4) {
             Text("Don't have an account?")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
 
             Button("Sign Up") {
                 authService.clearError()
@@ -165,7 +162,7 @@ struct LoginView: View {
             }
             .fontWeight(.semibold)
         }
-        .font(.subheadline)
+        .font(.appSubheadline)
     }
 
     // MARK: - Actions

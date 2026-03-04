@@ -72,27 +72,27 @@ struct EnvelopeCardView: View {
     private var progressTint: Color {
         // CC Payment: red when underfunded, green when fully funded
         if envelope.isCCPayment {
-            return isUnderfunded ? .red : .green
+            return isUnderfunded ? .danger : .success
         }
         if effectiveGoalAmount != nil {
-            return progress >= 1.0 ? .green : .accentColor
+            return progress >= 1.0 ? .success : .accentCyan
         }
         // Spending: green → orange → red as budget is consumed
         let ratio = monthlyAllocation > 0
             ? NSDecimalNumber(decimal: monthlySpent / monthlyAllocation).doubleValue
             : 0
-        if ratio > 1    { return .red }
-        if ratio > 0.85 { return .orange }
-        return .green
+        if ratio > 1    { return .danger }
+        if ratio > 0.85 { return .warning }
+        return .success
     }
 
     private var remainingColor: Color {
-        if envelope.isCCPayment { return isUnderfunded ? .red : .green }
-        if remaining < 0 { return .red }
+        if envelope.isCCPayment { return isUnderfunded ? .danger : .success }
+        if remaining < 0 { return .danger }
         if monthlyAllocation > 0, remaining < monthlyAllocation * Decimal(0.1) {
-            return .orange
+            return .warning
         }
-        return .primary
+        return .textPrimary
     }
 
     // MARK: - Body
@@ -102,17 +102,18 @@ struct EnvelopeCardView: View {
             // Row 1 — Name + remaining/owed
             HStack(alignment: .firstTextBaseline) {
                 Image(systemName: envelope.isCCPayment ? "creditcard.fill" : "envelope.fill")
-                    .foregroundStyle(envelope.isCCPayment ? Color.orange : Color.accentColor)
+                    .foregroundStyle(envelope.isCCPayment ? Color.accentOrange : Color.accentViolet)
                     .font(.subheadline)
 
                 Text(envelope.name)
-                    .font(.body.weight(.medium))
+                    .font(.appBody)
+                    .foregroundStyle(Color.textPrimary)
                     .lineLimit(1)
 
                 if envelope.isCCPayment {
-                    ccBadge
+                    BadgeView(text: "CC", color: .accentOrange)
                     if isUnderfunded {
-                        underfundedBadge
+                        BadgeView(text: "Underfunded", color: .danger)
                     }
                 }
 
@@ -123,45 +124,44 @@ struct EnvelopeCardView: View {
                     VStack(alignment: .trailing, spacing: 1) {
                         HStack(spacing: 2) {
                             Text("$")
-                                .font(.system(.body, design: .rounded, weight: .semibold))
-                                .foregroundStyle(.secondary)
+                                .font(.appNumber())
+                                .foregroundStyle(Color.textSecondary)
                             TextField("0", text: $editedAllocation)
-                                .font(.system(.body, design: .rounded, weight: .semibold))
+                                .font(.appNumber())
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                                 .focused(allocationFocused)
                                 .frame(width: 80)
                         }
                         Text("budget")
-                            .font(.caption2)
-                            .foregroundStyle(Color.accentColor)
+                            .font(.appLabel)
+                            .foregroundStyle(Color.accentCyan)
                     }
                 } else if envelope.isCCPayment, let debt = cardBalance {
                     VStack(alignment: .trailing, spacing: 1) {
                         Text(debt.asCurrency())
-                            .font(.system(.body, design: .rounded, weight: .semibold))
+                            .font(.appNumber())
                             .foregroundStyle(debt > 0 ? Color.warning : Color.success)
 
                         Text("owed")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .font(.appLabel)
+                            .foregroundStyle(Color.textSecondary)
                     }
                 } else {
                     VStack(alignment: .trailing, spacing: 1) {
                         Text(remaining.asCurrency())
-                            .font(.system(.body, design: .rounded, weight: .semibold))
+                            .font(.appNumber())
                             .foregroundStyle(remainingColor)
 
                         Text("remaining")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .font(.appLabel)
+                            .foregroundStyle(Color.textSecondary)
                     }
                 }
             }
 
             // Row 2 — Progress bar
-            ProgressView(value: progress)
-                .tint(progressTint)
+            BrandProgressBar(value: progress, tint: progressTint)
 
             // Row 3 — Context: spent/goal info + goal type badge
             HStack {
@@ -184,14 +184,14 @@ struct EnvelopeCardView: View {
 
                 if envelope.isCCPayment {
                     Text("Auto-managed")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
+                        .font(.appLabel)
+                        .foregroundStyle(Color.accentOrange)
                 } else if let goalType = envelope.goalType {
                     Label(goalType.displayName, systemImage: goalType.icon)
                 }
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(.appCaption)
+            .foregroundStyle(Color.textSecondary)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
@@ -201,22 +201,4 @@ struct EnvelopeCardView: View {
     }
 
     // MARK: - Subviews
-
-    private var ccBadge: some View {
-        Text("CC")
-            .font(.caption2.weight(.bold))
-            .foregroundStyle(.orange)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(Capsule().fill(Color.orange.opacity(0.15)))
-    }
-
-    private var underfundedBadge: some View {
-        Text("Underfunded")
-            .font(.caption2.weight(.bold))
-            .foregroundStyle(.red)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(Capsule().fill(Color.red.opacity(0.15)))
-    }
 }

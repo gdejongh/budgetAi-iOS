@@ -64,16 +64,16 @@ struct EditAccountSheet: View {
                     // Header icon
                     Image(systemName: accountType.icon)
                         .font(.system(size: 44))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Color.accentCyan)
                         .padding(.top, AppDesign.paddingMd)
 
                     VStack(spacing: AppDesign.paddingMd) {
                         // Account Name
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Account Name")
-                                .font(.caption)
+                                .font(.appCaption)
                                 .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.textSecondary)
                                 .textCase(.uppercase)
                                 .tracking(0.5)
 
@@ -87,15 +87,15 @@ struct EditAccountSheet: View {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Text(accountType.isCreditCard ? "Balance Owed" : "Current Balance")
-                                    .font(.caption)
+                                    .font(.appCaption)
                                     .fontWeight(.semibold)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Color.textSecondary)
                                     .textCase(.uppercase)
                                     .tracking(0.5)
 
                                 if !isManual {
                                     Text("· Plaid Managed")
-                                        .font(.caption2)
+                                        .font(.appCaption)
                                         .foregroundStyle(Color.accentCyan)
                                 }
                             }
@@ -103,29 +103,29 @@ struct EditAccountSheet: View {
                             if isManual {
                                 HStack {
                                     Text("$")
-                                        .font(.title3)
+                                        .font(.appTitle)
                                         .fontWeight(.semibold)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(Color.textSecondary)
 
                                     TextField("0.00", text: $balanceText)
                                         .textFieldStyle(.plain)
                                         .keyboardType(.decimalPad)
-                                        .font(.title3)
+                                        .font(.appTitle)
                                         .focused($isBalanceFocused)
                                 }
                                 .formFieldBackground()
                             } else {
                                 HStack {
                                     Text(account.currentBalance.asCurrency())
-                                        .font(.title3)
+                                        .font(.appTitle)
                                         .fontWeight(.semibold)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(Color.textSecondary)
                                     Spacer()
                                 }
                                 .padding(AppDesign.paddingSm + 4)
                                 .background(
                                     RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                        .fill(Color(.tertiarySystemFill))
+                                        .fill(Color(.secondarySystemGroupedBackground))
                                 )
                             }
                         }
@@ -133,20 +133,20 @@ struct EditAccountSheet: View {
                         // Info about account type (read-only)
                         HStack {
                             Text("Account Type")
-                                .font(.caption)
+                                .font(.appCaption)
                                 .fontWeight(.semibold)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.textSecondary)
                                 .textCase(.uppercase)
                                 .tracking(0.5)
                             Spacer()
                             Text(accountType.displayName)
-                                .font(.subheadline)
+                                .font(.appBody)
                                 .fontWeight(.medium)
                         }
                         .padding(AppDesign.paddingSm + 4)
                         .background(
                             RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                .fill(Color(.tertiarySystemFill))
+                                .fill(Color(.secondarySystemGroupedBackground))
                         )
                     }
                     .padding(.horizontal, AppDesign.paddingLg)
@@ -156,10 +156,10 @@ struct EditAccountSheet: View {
                         HStack(spacing: 8) {
                             Image(systemName: "info.circle.fill")
                                 .foregroundStyle(Color.accentCyan)
-                                .font(.caption)
+                                .font(.appCaption)
                             Text("Balance is synced from your bank via Plaid and cannot be edited directly.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.appCaption)
+                                .foregroundStyle(Color.textSecondary)
                         }
                         .padding(.horizontal, AppDesign.paddingLg)
                     }
@@ -179,7 +179,7 @@ struct EditAccountSheet: View {
                             Text("Save Changes")
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .controlSize(.large)
                     .disabled(!isValid || !hasChanges || isSubmitting)
                     .padding(.horizontal, AppDesign.paddingLg)

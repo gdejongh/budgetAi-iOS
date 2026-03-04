@@ -75,7 +75,7 @@ struct CCPaymentSheet: View {
                                     amount = "\(creditCard.currentBalance)"
                                 } label: {
                                     Text("Pay Full")
-                                        .font(.caption)
+                                        .font(.appCaption)
                                         .fontWeight(.semibold)
                                         .foregroundStyle(Color.accentCyan)
                                         .padding(.horizontal, 8)
@@ -109,7 +109,7 @@ struct CCPaymentSheet: View {
                     // Error
                     if let error = errorMessage {
                         Text(error)
-                            .font(.caption)
+                            .font(.appCaption)
                             .foregroundStyle(Color.danger)
                     }
 
@@ -129,7 +129,7 @@ struct CCPaymentSheet: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .controlSize(.large)
                     .disabled(!isValid || isSaving)
                 }
@@ -159,21 +159,24 @@ struct CCPaymentSheet: View {
         HStack(spacing: 12) {
             Image(systemName: "creditcard.fill")
                 .font(.title2)
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Color.accentCyan)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(creditCard.name)
-                    .font(.headline)
+                    .font(.appHeadline)
 
                 Text("Balance owed: \(creditCard.currentBalance.asCurrency())")
-                    .font(.caption)
+                    .font(.appCaption)
                     .foregroundStyle(Color.warning)
             }
 
             Spacer()
         }
         .padding(AppDesign.paddingMd)
-        .glassCard()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
     }
 
     // MARK: - Form Section
@@ -181,7 +184,7 @@ struct CCPaymentSheet: View {
     private func formSection<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(.caption)
+                .font(.appCaption)
                 .foregroundStyle(Color.textSecondary)
 
             content()
