@@ -100,13 +100,13 @@
 			);
 			mainGroup = DBAF49652F5794770083A44C;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DB00000100000001000000A3 /* XCRemoteSwiftPackageReference "plaid-link-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DBAF496F2F5794770083A44C /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			packageReferences = (
-				DB00000100000001000000A3 /* XCRemoteSwiftPackageReference "plaid-link-ios" */,
-			);
 			targets = (
 				DBAF496D2F5794770083A44C /* ai envelope budget */,
 			);

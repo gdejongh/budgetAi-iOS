@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ReconcileBalanceSheet: View {
     @Environment(AccountService.self) private var accountService
+    @Environment(DataRefreshService.self) private var dataRefreshService
     @Environment(\.dismiss) private var dismiss
 
     let account: BankAccountResponse
@@ -190,6 +191,7 @@ struct ReconcileBalanceSheet: View {
         let success = await accountService.reconcileAccount(account, targetBalance: target)
 
         if success {
+            await dataRefreshService.refreshAfterReconcile()
             dismiss()
         } else {
             errorMessage = accountService.errorMessage ?? "Failed to reconcile balance."

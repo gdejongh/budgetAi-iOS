@@ -9,6 +9,7 @@ import SwiftUI
 
 struct AccountDetailView: View {
     @Environment(AccountService.self) private var accountService
+    @Environment(DataRefreshService.self) private var dataRefreshService
     @Environment(\.dismiss) private var dismiss
 
     let accountId: String
@@ -225,6 +226,7 @@ struct AccountDetailView: View {
         isDeleting = true
         let success = await accountService.deleteAccount(account)
         if success {
+            await dataRefreshService.refreshAfterAccountChange()
             dismiss()
         }
         isDeleting = false

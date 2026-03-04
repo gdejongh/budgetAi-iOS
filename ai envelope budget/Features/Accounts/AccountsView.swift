@@ -10,6 +10,7 @@ import SwiftUI
 struct AccountsView: View {
     @Environment(AccountService.self) private var accountService
     @Environment(PlaidService.self) private var plaidService
+    @Environment(DataRefreshService.self) private var dataRefreshService
     @State private var showCreateSheet = false
     @State private var showPlaidMapping = false
     @State private var plaidLinkResult: PlaidLinkResult?
@@ -130,7 +131,7 @@ struct AccountsView: View {
             // Error banner
             if let error = accountService.errorMessage {
                 ErrorBannerView(message: error) {
-                    await accountService.fetchAccounts()
+                    await dataRefreshService.refreshAll()
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -199,5 +200,6 @@ struct AccountsView: View {
         AccountsView()
             .environment(PlaidService())
             .environment(AccountService())
+            .environment(DataRefreshService(accountService: AccountService(), envelopeService: EnvelopeService(), transactionService: TransactionService()))
     }
 }

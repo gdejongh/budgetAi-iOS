@@ -10,6 +10,7 @@ import SwiftUI
 struct EnvelopesView: View {
     @Environment(EnvelopeService.self) private var envelopeService
     @Environment(AccountService.self) private var accountService
+    @Environment(TransactionService.self) private var transactionService
 
     @State private var showCreateCategory = false
     @State private var showCreateEnvelope = false
@@ -265,10 +266,19 @@ struct EnvelopesView: View {
                         envelope: envelope,
                         monthlyAllocation: envelopeService.monthlyAllocation(for: envelope),
                         monthlySpent: envelopeService.monthlySpent(for: envelope),
-                        remaining: envelopeService.remaining(for: envelope),
+                        remaining: envelope.isCCPayment
+                            ? envelopeService.remaining(for: envelope, accounts: accountService.accounts, transactions: transactionService.transactions)
+                            : envelopeService.remaining(for: envelope),
                         isEditing: editingEnvelopeId == envelope.id,
                         editedAllocation: $editedAllocation,
-                        allocationFocused: $allocationFieldFocused
+                        allocationFocused: $allocationFieldFocused,
+                        cardBalance: envelope.isCCPayment
+                            ? envelopeService.cardBalance(for: envelope, accounts: accountService.accounts)
+                            : nil,
+                        isUnderfunded: envelopeService.isUnderfunded(envelope, accounts: accountService.accounts, transactions: transactionService.transactions),
+                        ccCoveragePercent: envelope.isCCPayment
+                            ? envelopeService.ccCoveragePercent(for: envelope, accounts: accountService.accounts, transactions: transactionService.transactions)
+                            : nil
                     )
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -295,41 +305,85 @@ struct EnvelopesView: View {
                 }
             }
         } header: {
-            HStack(spacing: 6) {
-                Text(category.name)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(category.name)
 
-                if category.isCCPayment {
-                    Text("AUTO")
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.indigo)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
-                        .background(Capsule().fill(Color.indigo.opacity(0.15)))
+                    if category.isCCPayment {
+                        Text("AUTO")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(Color.orange.opacity(0.15)))
+                    }
+
+                    Spacer()
+
+                    if !category.isCCPayment {
+                        Button {
+                            createEnvelopeCategoryId = category.id
+                            showCreateEnvelope = true
+                        } label: {
+                            Image(systemName: "plus.circle")
+                                .font(.subheadline)
+                        }
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+
+                        Button {
+                            showDeleteCategory = category
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.subheadline)
+                                .foregroundStyle(.red)
+                        }
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
                 }
 
-                Spacer()
+                // CC Payment category summary: Total Debt / Funded / Status
+                if category.isCCPayment, let categoryId = category.id {
+                    let totalDebt = envelopeService.ccCategoryTotalDebt(categoryId: categoryId, accounts: accountService.accounts)
+                    let totalFunded = envelopeService.ccCategoryTotalFunded(categoryId: categoryId, accounts: accountService.accounts, transactions: transactionService.transactions)
+                    let fullyFunded = totalFunded >= totalDebt
 
-                if !category.isCCPayment {
-                    Button {
-                        createEnvelopeCategoryId = category.id
-                        showCreateEnvelope = true
-                    } label: {
-                        Image(systemName: "plus.circle")
-                            .font(.subheadline)
-                    }
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Total Debt")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text(totalDebt.asCurrency())
+                                .font(.caption.weight(.semibold))
+                        }
 
-                    Button {
-                        showDeleteCategory = category
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.subheadline)
-                            .foregroundStyle(.red)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Funded")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text(totalFunded.asCurrency())
+                                .font(.caption.weight(.semibold))
+                        }
+
+                        Spacer()
+
+                        if fullyFunded {
+                            Text("Fully Funded")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.green)
+                        } else {
+                            VStack(alignment: .trailing, spacing: 1) {
+                                Text("Underfunded")
+                                    .font(.caption2)
+                                    .foregroundStyle(.red)
+                                Text((totalDebt - totalFunded).asCurrency())
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(.red)
+                            }
+                        }
                     }
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
                 }
             }
         }
@@ -341,5 +395,6 @@ struct EnvelopesView: View {
         EnvelopesView()
             .environment(EnvelopeService())
             .environment(AccountService())
+            .environment(TransactionService())
     }
 }

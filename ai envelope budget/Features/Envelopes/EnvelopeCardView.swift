@@ -16,6 +16,11 @@ struct EnvelopeCardView: View {
     @Binding var editedAllocation: String
     var allocationFocused: FocusState<Bool>.Binding
 
+    // CC Payment specific
+    var cardBalance: Decimal? = nil
+    var isUnderfunded: Bool = false
+    var ccCoveragePercent: Double? = nil
+
     // MARK: - Computed
 
     /// The goal target amount, resolved from the right field per goal type.
@@ -36,16 +41,18 @@ struct EnvelopeCardView: View {
 
     /// Progress toward the goal (0→1), or spending progress if no goal.
     private var progress: Double {
+        // CC Payment envelopes use coverage percent
+        if envelope.isCCPayment, let coverage = ccCoveragePercent {
+            return coverage
+        }
         if let goalAmount = effectiveGoalAmount, goalAmount > 0 {
             switch envelope.goalType {
             case .target:
-                // Savings: how much of the total goal has been funded
                 return min(
                     NSDecimalNumber(decimal: envelope.allocatedBalance / goalAmount).doubleValue,
                     1.0
                 )
             case .monthly, .weekly:
-                // Recurring budget: how close the monthly allocation is to the target
                 return min(
                     NSDecimalNumber(decimal: monthlyAllocation / goalAmount).doubleValue,
                     1.0
@@ -63,6 +70,10 @@ struct EnvelopeCardView: View {
     }
 
     private var progressTint: Color {
+        // CC Payment: red when underfunded, green when fully funded
+        if envelope.isCCPayment {
+            return isUnderfunded ? .red : .green
+        }
         if effectiveGoalAmount != nil {
             return progress >= 1.0 ? .green : .accentColor
         }
@@ -76,6 +87,7 @@ struct EnvelopeCardView: View {
     }
 
     private var remainingColor: Color {
+        if envelope.isCCPayment { return isUnderfunded ? .red : .green }
         if remaining < 0 { return .red }
         if monthlyAllocation > 0, remaining < monthlyAllocation * Decimal(0.1) {
             return .orange
@@ -87,10 +99,10 @@ struct EnvelopeCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Row 1 — Name + remaining
+            // Row 1 — Name + remaining/owed
             HStack(alignment: .firstTextBaseline) {
                 Image(systemName: envelope.isCCPayment ? "creditcard.fill" : "envelope.fill")
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(envelope.isCCPayment ? Color.orange : Color.accentColor)
                     .font(.subheadline)
 
                 Text(envelope.name)
@@ -99,6 +111,9 @@ struct EnvelopeCardView: View {
 
                 if envelope.isCCPayment {
                     ccBadge
+                    if isUnderfunded {
+                        underfundedBadge
+                    }
                 }
 
                 Spacer()
@@ -121,6 +136,16 @@ struct EnvelopeCardView: View {
                             .font(.caption2)
                             .foregroundStyle(Color.accentColor)
                     }
+                } else if envelope.isCCPayment, let debt = cardBalance {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(debt.asCurrency())
+                            .font(.system(.body, design: .rounded, weight: .semibold))
+                            .foregroundStyle(debt > 0 ? Color.warning : Color.success)
+
+                        Text("owed")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 } else {
                     VStack(alignment: .trailing, spacing: 1) {
                         Text(remaining.asCurrency())
@@ -140,7 +165,9 @@ struct EnvelopeCardView: View {
 
             // Row 3 — Context: spent/goal info + goal type badge
             HStack {
-                if let goalAmount = effectiveGoalAmount {
+                if envelope.isCCPayment, let debt = cardBalance {
+                    Text("\(envelope.allocatedBalance.asCurrency()) of \(debt.asCurrency()) funded")
+                } else if let goalAmount = effectiveGoalAmount {
                     switch envelope.goalType {
                     case .target:
                         Text("\(envelope.allocatedBalance.asCurrency()) of \(goalAmount.asCurrency()) saved")
@@ -155,7 +182,11 @@ struct EnvelopeCardView: View {
 
                 Spacer()
 
-                if let goalType = envelope.goalType {
+                if envelope.isCCPayment {
+                    Text("Auto-managed")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                } else if let goalType = envelope.goalType {
                     Label(goalType.displayName, systemImage: goalType.icon)
                 }
             }
@@ -174,9 +205,18 @@ struct EnvelopeCardView: View {
     private var ccBadge: some View {
         Text("CC")
             .font(.caption2.weight(.bold))
-            .foregroundStyle(.indigo)
+            .foregroundStyle(.orange)
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
-            .background(Capsule().fill(Color.indigo.opacity(0.15)))
+            .background(Capsule().fill(Color.orange.opacity(0.15)))
+    }
+
+    private var underfundedBadge: some View {
+        Text("Underfunded")
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(.red)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .background(Capsule().fill(Color.red.opacity(0.15)))
     }
 }

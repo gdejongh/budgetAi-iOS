@@ -12,6 +12,8 @@ struct DashboardView: View {
     @Environment(AccountService.self) private var accountService
     @Environment(EnvelopeService.self) private var envelopeService
     @Environment(TransactionService.self) private var transactionService
+    @Environment(AiAdviceService.self) private var aiAdviceService
+    @Environment(DataRefreshService.self) private var dataRefreshService
 
     @Binding var selectedTab: AppTab
 
@@ -73,11 +75,18 @@ struct DashboardView: View {
                         }
                     }
 
+                    // AI Insights (shown when user has accounts for the AI to analyze)
+                    if !accountService.accounts.isEmpty {
+                        Section("AI Insights") {
+                            AiAdviceCardView()
+                        }
+                    }
+
                     // Error banners
                     if let error = accountService.errorMessage {
                         Section {
                             ErrorBannerView(message: error) {
-                                await accountService.fetchAccounts()
+                                await dataRefreshService.refreshAll()
                             }
                         }
                     }
@@ -166,10 +175,7 @@ struct DashboardView: View {
     }
 
     private func loadAllData() async {
-        async let accounts: () = accountService.fetchAccounts()
-        async let envelopes: () = envelopeService.loadAll()
-        async let transactions: () = transactionService.fetchTransactions()
-        _ = await (accounts, envelopes, transactions)
+        await dataRefreshService.refreshAll()
     }
 }
 
@@ -180,5 +186,7 @@ struct DashboardView: View {
             .environment(AccountService())
             .environment(EnvelopeService())
             .environment(TransactionService())
+            .environment(AiAdviceService())
+            .environment(DataRefreshService(accountService: AccountService(), envelopeService: EnvelopeService(), transactionService: TransactionService()))
     }
 }

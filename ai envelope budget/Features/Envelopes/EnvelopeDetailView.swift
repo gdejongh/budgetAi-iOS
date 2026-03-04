@@ -9,6 +9,8 @@ import SwiftUI
 
 struct EnvelopeDetailView: View {
     @Environment(EnvelopeService.self) private var envelopeService
+    @Environment(AccountService.self) private var accountService
+    @Environment(TransactionService.self) private var transactionService
     @Environment(\.dismiss) private var dismiss
 
     let envelopeId: String
@@ -38,7 +40,28 @@ struct EnvelopeDetailView: View {
 
     private var remaining: Decimal {
         guard let env = envelope else { return Decimal.zero }
-        return envelopeService.remaining(for: env)
+        return envelopeService.remaining(for: env, accounts: accountService.accounts, transactions: transactionService.transactions)
+    }
+
+    // CC Payment specific
+    private var ccCardBalance: Decimal {
+        guard let env = envelope else { return Decimal.zero }
+        return envelopeService.cardBalance(for: env, accounts: accountService.accounts)
+    }
+
+    private var ccIsUnderfunded: Bool {
+        guard let env = envelope else { return false }
+        return envelopeService.isUnderfunded(env, accounts: accountService.accounts, transactions: transactionService.transactions)
+    }
+
+    private var ccCoverage: Double {
+        guard let env = envelope else { return 1.0 }
+        return envelopeService.ccCoveragePercent(for: env, accounts: accountService.accounts, transactions: transactionService.transactions)
+    }
+
+    private var ccEffectiveFunding: Decimal {
+        guard let env = envelope else { return .zero }
+        return envelopeService.ccEffectiveFunding(for: env, accounts: accountService.accounts, transactions: transactionService.transactions)
     }
 
     /// The goal target amount, resolved from the right field per goal type.
@@ -56,119 +79,70 @@ struct EnvelopeDetailView: View {
         }
     }
 
+    /// Progress toward the goal (0→1), or spending/coverage progress.
     private var progress: Double {
+        // CC Payment envelopes use coverage percent
+        if let env = envelope, env.isCCPayment {
+            return ccCoverage
+        }
         if let goalAmount = effectiveGoalAmount, goalAmount > 0, let env = envelope {
+            let value: Double
             switch env.goalType {
             case .target:
-                return min(
-                    NSDecimalNumber(decimal: env.allocatedBalance / goalAmount).doubleValue,
-                    1.0
-                )
+                value = NSDecimalNumber(decimal: env.allocatedBalance / goalAmount).doubleValue
             case .monthly, .weekly:
-                return min(
-                    NSDecimalNumber(decimal: monthlyAllocation / goalAmount).doubleValue,
-                    1.0
-                )
+                value = NSDecimalNumber(decimal: monthlyAllocation / goalAmount).doubleValue
             case .none:
-                break
+                value = 0
             }
+            return min(value, 1.0)
         }
         guard monthlyAllocation > 0 else { return 0 }
-        return min(
-            NSDecimalNumber(decimal: monthlySpent / monthlyAllocation).doubleValue,
-            1.0
-        )
+        let spentRatio = NSDecimalNumber(decimal: monthlySpent / monthlyAllocation).doubleValue
+        return min(spentRatio, 1.0)
     }
 
     private var progressTint: Color {
-        if effectiveGoalAmount != nil {
-            return progress >= 1.0 ? .green : .accentColor
+        if let env = envelope, env.isCCPayment {
+            if ccIsUnderfunded {
+                return Color.red
+            }
+            return Color.green
         }
-        let ratio = monthlyAllocation > 0
-            ? NSDecimalNumber(decimal: monthlySpent / monthlyAllocation).doubleValue
-            : 0
-        if ratio > 1    { return .red }
-        if ratio > 0.85 { return .orange }
-        return .green
+        if effectiveGoalAmount != nil {
+            if progress >= 1.0 {
+                return Color.green
+            }
+            return Color.accentColor
+        }
+        let ratio: Double
+        if monthlyAllocation > 0 {
+            ratio = NSDecimalNumber(decimal: monthlySpent / monthlyAllocation).doubleValue
+        } else {
+            ratio = 0
+        }
+        if ratio > 1 { return Color.red }
+        if ratio > 0.85 { return Color.orange }
+        return Color.green
     }
 
     private var remainingColor: Color {
-        if remaining < 0 { return .red }
-        if monthlyAllocation > 0, remaining < monthlyAllocation * Decimal(0.1) { return .orange }
-        return .green
+        if let env = envelope, env.isCCPayment {
+            if ccIsUnderfunded {
+                return Color.red
+            }
+            return Color.green
+        }
+        if remaining < 0 { return Color.red }
+        let threshold = monthlyAllocation * Decimal(0.1)
+        if monthlyAllocation > 0, remaining < threshold { return Color.orange }
+        return Color.green
     }
 
     var body: some View {
         Group {
             if let envelope {
-                List {
-                    // Hero
-                    Section {
-                        heroCard(envelope)
-                    }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-
-                    // This Month
-                    Section("This Month") {
-                        LabeledContent("Allocated", value: monthlyAllocation.asCurrency())
-                        LabeledContent("Spent") {
-                            Text(monthlySpent.asCurrency())
-                                .foregroundStyle(monthlySpent > 0 ? Color.warning : .secondary)
-                        }
-                        LabeledContent("Net") {
-                            Text((monthlyAllocation - monthlySpent).asCurrency())
-                                .foregroundStyle(monthlyAllocation - monthlySpent >= 0 ? Color.success : Color.danger)
-                        }
-                    }
-
-                    // Budget
-                    Section("Budget") {
-                        LabeledContent("All-Time Allocated", value: envelope.allocatedBalance.asCurrency())
-
-                        Button {
-                            editedAllocation = "\(monthlyAllocation)"
-                            showEditAllocation = true
-                        } label: {
-                            LabeledContent {
-                                HStack(spacing: 4) {
-                                    Text(monthlyAllocation.asCurrency())
-                                        .fontWeight(.medium)
-                                    Image(systemName: "pencil.circle.fill")
-                                        .foregroundStyle(.tertiary)
-                                }
-                                .foregroundStyle(Color.accentColor)
-                            } label: {
-                                Text("\(envelopeService.viewedMonthString) Budget")
-                            }
-                        }
-
-                        if let goalType = envelope.goalType {
-                            goalRow(envelope, goalType: goalType)
-                        } else if !envelope.isCCPayment {
-                            setGoalButton
-                        }
-                    }
-
-                    // Danger Zone
-                    if !envelope.isCCPayment {
-                        Section {
-                            Button(role: .destructive) {
-                                showDeleteConfirmation = true
-                            } label: {
-                                HStack {
-                                    Label("Delete Envelope", systemImage: "trash")
-                                    Spacer()
-                                    if isDeleting {
-                                        ProgressView()
-                                            .controlSize(.small)
-                                    }
-                                }
-                            }
-                            .disabled(isDeleting)
-                        }
-                    }
-                }
+                detailContent(envelope)
             } else {
                 ContentUnavailableView(
                     "Envelope Not Found",
@@ -182,32 +156,7 @@ struct EnvelopeDetailView: View {
         .toolbar {
             if let envelope, !envelope.isCCPayment {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            editedName = envelope.name
-                            showEditName = true
-                        } label: {
-                            Label("Rename", systemImage: "pencil")
-                        }
-
-                        Button {
-                            showGoalSheet = true
-                        } label: {
-                            Label(envelope.hasGoal ? "Edit Goal" : "Set Goal", systemImage: "target")
-                        }
-
-                        Divider()
-
-                        Button(role: .destructive) {
-                            showDeleteConfirmation = true
-                        } label: {
-                            Label("Delete Envelope", systemImage: "trash")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle.fill")
-                            .foregroundStyle(Color.accentColor)
-                            .font(.title3)
-                    }
+                    envelopeMenu(envelope)
                 }
             }
         }
@@ -249,58 +198,234 @@ struct EnvelopeDetailView: View {
         }
     }
 
+    // MARK: - Detail Content
+
+    private func detailContent(_ envelope: EnvelopeResponse) -> some View {
+        List {
+            // Hero
+            Section {
+                heroCard(envelope)
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+
+            // This Month
+            thisMonthSection(envelope)
+
+            // Budget
+            budgetSection(envelope)
+
+            // Danger Zone
+            if !envelope.isCCPayment {
+                Section {
+                    Button(role: .destructive) {
+                        showDeleteConfirmation = true
+                    } label: {
+                        HStack {
+                            Label("Delete Envelope", systemImage: "trash")
+                            Spacer()
+                            if isDeleting {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                        }
+                    }
+                    .disabled(isDeleting)
+                }
+            }
+        }
+    }
+
+    // MARK: - This Month Section
+
+    private func thisMonthSection(_ envelope: EnvelopeResponse) -> some View {
+        Section("This Month") {
+            if envelope.isCCPayment {
+                LabeledContent("Card Balance Owed") {
+                    Text(ccCardBalance.asCurrency())
+                        .foregroundStyle(ccCardBalance > 0 ? Color.warning : Color.success)
+                }
+            }
+            LabeledContent("Allocated", value: monthlyAllocation.asCurrency())
+            LabeledContent("Spent") {
+                Text(monthlySpent.asCurrency())
+                    .foregroundStyle(monthlySpent > 0 ? Color.warning : .secondary)
+            }
+            LabeledContent("Net") {
+                let net = monthlyAllocation - monthlySpent
+                Text(net.asCurrency())
+                    .foregroundStyle(net >= 0 ? Color.success : Color.danger)
+            }
+        }
+    }
+
+    // MARK: - Budget Section
+
+    private func budgetSection(_ envelope: EnvelopeResponse) -> some View {
+        Section("Budget") {
+            LabeledContent("All-Time Allocated", value: envelope.allocatedBalance.asCurrency())
+
+            Button {
+                editedAllocation = "\(monthlyAllocation)"
+                showEditAllocation = true
+            } label: {
+                LabeledContent {
+                    HStack(spacing: 4) {
+                        Text(monthlyAllocation.asCurrency())
+                            .fontWeight(.medium)
+                        Image(systemName: "pencil.circle.fill")
+                            .foregroundStyle(.tertiary)
+                    }
+                    .foregroundStyle(Color.accentColor)
+                } label: {
+                    Text("\(envelopeService.viewedMonthString) Budget")
+                }
+            }
+
+            if let goalType = envelope.goalType {
+                goalRow(envelope, goalType: goalType)
+            } else if !envelope.isCCPayment {
+                setGoalButton
+            }
+        }
+    }
+
+    // MARK: - Envelope Menu
+
+    private func envelopeMenu(_ envelope: EnvelopeResponse) -> some View {
+        Menu {
+            Button {
+                editedName = envelope.name
+                showEditName = true
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+
+            Button {
+                showGoalSheet = true
+            } label: {
+                Label(envelope.hasGoal ? "Edit Goal" : "Set Goal", systemImage: "target")
+            }
+
+            Divider()
+
+            Button(role: .destructive) {
+                showDeleteConfirmation = true
+            } label: {
+                Label("Delete Envelope", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle.fill")
+                .foregroundStyle(Color.accentColor)
+                .font(.title3)
+        }
+    }
+
     // MARK: - Hero Card
 
     private func heroCard(_ envelope: EnvelopeResponse) -> some View {
         VStack(spacing: 16) {
             Image(systemName: envelope.isCCPayment ? "creditcard.fill" : "envelope.fill")
                 .font(.system(size: 44))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(envelope.isCCPayment ? Color.orange : Color.accentColor)
 
-            VStack(spacing: 4) {
-                Text(envelope.isCCPayment ? "Available for Payment" : "Remaining")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Text(remaining.asCurrency())
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(remainingColor)
-            }
-
-            // Progress bar
-            ProgressView(value: progress)
-                .tint(progressTint)
-                .scaleEffect(y: 1.5)
-                .padding(.horizontal, AppDesign.paddingMd)
-
-            // Goal context
-            if let goalAmount = effectiveGoalAmount {
-                switch envelope.goalType {
-                case .target:
-                    Text("\(envelope.allocatedBalance.asCurrency()) of \(goalAmount.asCurrency()) saved")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                case .monthly, .weekly:
-                    Text("\(monthlyAllocation.asCurrency()) of \(goalAmount.asCurrency()) funded")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                case .none:
-                    EmptyView()
-                }
+            if envelope.isCCPayment {
+                ccHeroContent(envelope)
+            } else {
+                standardHeroContent(envelope)
             }
 
             // Type + Goal badges
-            HStack(spacing: 8) {
-                if envelope.isCCPayment {
-                    badge("CC Payment", color: .accentViolet)
-                }
-                if let goalType = envelope.goalType {
-                    badge(goalType.displayName + " Goal", color: .accentCyan)
-                }
-            }
+            heroBadges(envelope)
         }
         .frame(maxWidth: .infinity)
         .padding(AppDesign.paddingLg)
+    }
+
+    @ViewBuilder
+    private func ccHeroContent(_ envelope: EnvelopeResponse) -> some View {
+        VStack(spacing: 4) {
+            Text("Card Balance")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Text(ccCardBalance.asCurrency())
+                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .foregroundStyle(ccCardBalance > 0 ? Color.warning : Color.success)
+        }
+
+        ProgressView(value: progress)
+            .tint(progressTint)
+            .scaleEffect(y: 1.5)
+            .padding(.horizontal, AppDesign.paddingMd)
+
+        Text("\(ccEffectiveFunding.asCurrency()) of \(ccCardBalance.asCurrency()) funded")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+        VStack(spacing: 4) {
+            Text("Available for Payment")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text(remaining.asCurrency())
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundStyle(remainingColor)
+        }
+    }
+
+    @ViewBuilder
+    private func standardHeroContent(_ envelope: EnvelopeResponse) -> some View {
+        VStack(spacing: 4) {
+            Text("Remaining")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Text(remaining.asCurrency())
+                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .foregroundStyle(remainingColor)
+        }
+
+        ProgressView(value: progress)
+            .tint(progressTint)
+            .scaleEffect(y: 1.5)
+            .padding(.horizontal, AppDesign.paddingMd)
+
+        if let goalAmount = effectiveGoalAmount {
+            goalContextText(envelope, goalAmount: goalAmount)
+        }
+    }
+
+    @ViewBuilder
+    private func goalContextText(_ envelope: EnvelopeResponse, goalAmount: Decimal) -> some View {
+        switch envelope.goalType {
+        case .target:
+            Text("\(envelope.allocatedBalance.asCurrency()) of \(goalAmount.asCurrency()) saved")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .monthly, .weekly:
+            Text("\(monthlyAllocation.asCurrency()) of \(goalAmount.asCurrency()) funded")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .none:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func heroBadges(_ envelope: EnvelopeResponse) -> some View {
+        HStack(spacing: 8) {
+            if envelope.isCCPayment {
+                badge("CC Payment", color: .orange)
+                if ccIsUnderfunded {
+                    badge("Underfunded", color: .red)
+                } else {
+                    badge("Fully Funded", color: .green)
+                }
+            }
+            if let goalType = envelope.goalType {
+                badge(goalType.displayName + " Goal", color: .accentCyan)
+            }
+        }
     }
 
     private func badge(_ text: String, color: Color) -> some View {

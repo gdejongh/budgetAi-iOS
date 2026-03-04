@@ -12,6 +12,7 @@ import SwiftUI
 struct PlaidConnectionsSection: View {
     @Environment(PlaidService.self) private var plaidService
     @Environment(AccountService.self) private var accountService
+    @Environment(DataRefreshService.self) private var dataRefreshService
 
     @State private var showSyncResult = false
     @State private var syncResultMessage = ""
@@ -164,7 +165,7 @@ struct PlaidConnectionsSection: View {
         if let result = await plaidService.syncAll() {
             syncResultMessage = result.message
             showSyncResult = true
-            await accountService.fetchAccounts()
+            await dataRefreshService.refreshAfterAccountChange()
             await plaidService.fetchPlaidItems()
         } else if let error = plaidService.errorMessage {
             syncResultMessage = error
@@ -178,7 +179,7 @@ struct PlaidConnectionsSection: View {
         guard let id = item.id else { return }
         let success = await plaidService.unlinkItem(id)
         if success {
-            await accountService.fetchAccounts()
+            await dataRefreshService.refreshAfterAccountChange()
         }
         itemToUnlink = nil
     }

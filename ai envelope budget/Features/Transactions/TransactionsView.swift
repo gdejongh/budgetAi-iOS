@@ -11,6 +11,7 @@ struct TransactionsView: View {
     @Environment(TransactionService.self) private var transactionService
     @Environment(AccountService.self) private var accountService
     @Environment(EnvelopeService.self) private var envelopeService
+    @Environment(DataRefreshService.self) private var dataRefreshService
 
     @State private var showCreateTransaction = false
     @State private var showTransfer = false
@@ -145,7 +146,7 @@ struct TransactionsView: View {
                 Button("Delete", role: .destructive) {
                     Task {
                         _ = await transactionService.deleteTransaction(txn)
-                        await accountService.fetchAccounts()
+                        await dataRefreshService.refreshAfterTransactionChange()
                     }
                 }
             }
@@ -275,5 +276,6 @@ private struct IdentifiableTransaction: Identifiable {
             .environment(TransactionService())
             .environment(AccountService())
             .environment(EnvelopeService())
+            .environment(DataRefreshService(accountService: AccountService(), envelopeService: EnvelopeService(), transactionService: TransactionService()))
     }
 }

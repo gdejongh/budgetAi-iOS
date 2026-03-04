@@ -12,6 +12,7 @@ struct CreateTransactionSheet: View {
     @Environment(TransactionService.self) private var transactionService
     @Environment(AccountService.self) private var accountService
     @Environment(EnvelopeService.self) private var envelopeService
+    @Environment(DataRefreshService.self) private var dataRefreshService
 
     /// Preselect an account
     var preselectedAccountId: String?
@@ -248,8 +249,7 @@ struct CreateTransactionSheet: View {
         )
 
         if success {
-            // Refresh account balances since they changed
-            await accountService.fetchAccounts()
+            await dataRefreshService.refreshAfterTransactionChange()
             dismiss()
         } else {
             errorMessage = transactionService.errorMessage ?? "Failed to create transaction."
@@ -263,4 +263,5 @@ struct CreateTransactionSheet: View {
         .environment(TransactionService())
         .environment(AccountService())
         .environment(EnvelopeService())
+        .environment(DataRefreshService(accountService: AccountService(), envelopeService: EnvelopeService(), transactionService: TransactionService()))
 }

@@ -11,6 +11,7 @@ struct CCPaymentSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(TransactionService.self) private var transactionService
     @Environment(AccountService.self) private var accountService
+    @Environment(DataRefreshService.self) private var dataRefreshService
 
     /// The credit card to pay
     let creditCard: BankAccountResponse
@@ -210,7 +211,7 @@ struct CCPaymentSheet: View {
         )
 
         if success {
-            await accountService.fetchAccounts()
+            await dataRefreshService.refreshAfterCCPayment()
             dismiss()
         } else {
             errorMessage = transactionService.errorMessage ?? "Failed to process payment."
@@ -229,4 +230,5 @@ struct CCPaymentSheet: View {
     )
     .environment(TransactionService())
     .environment(AccountService())
+    .environment(DataRefreshService(accountService: AccountService(), envelopeService: EnvelopeService(), transactionService: TransactionService()))
 }

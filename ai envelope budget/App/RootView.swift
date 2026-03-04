@@ -13,6 +13,8 @@ struct RootView: View {
     @State private var envelopeService = EnvelopeService()
     @State private var transactionService = TransactionService()
     @State private var plaidService = PlaidService()
+    @State private var aiAdviceService = AiAdviceService()
+    @State private var dataRefreshService: DataRefreshService?
     @State private var selectedTab: AppTab = .dashboard
 
     var body: some View {
@@ -48,6 +50,8 @@ struct RootView: View {
                 .environment(envelopeService)
                 .environment(transactionService)
                 .environment(plaidService)
+                .environment(aiAdviceService)
+                .environment(resolvedRefreshService)
                 .transition(.opacity)
             } else {
                 NavigationStack {
@@ -57,6 +61,19 @@ struct RootView: View {
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.85), value: authService.isAuthenticated)
+    }
+
+    /// Lazily create the refresh service so the @State services are initialized first.
+    private var resolvedRefreshService: DataRefreshService {
+        if let existing = dataRefreshService { return existing }
+        let service = DataRefreshService(
+            accountService: accountService,
+            envelopeService: envelopeService,
+            transactionService: transactionService
+        )
+        // Dispatch to avoid mutating state during view update
+        DispatchQueue.main.async { dataRefreshService = service }
+        return service
     }
 }
 

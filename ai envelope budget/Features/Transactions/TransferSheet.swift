@@ -11,6 +11,7 @@ struct TransferSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(TransactionService.self) private var transactionService
     @Environment(AccountService.self) private var accountService
+    @Environment(DataRefreshService.self) private var dataRefreshService
 
     /// Preselect a source account
     var preselectedSourceId: String?
@@ -217,7 +218,7 @@ struct TransferSheet: View {
         )
 
         if success {
-            await accountService.fetchAccounts()
+            await dataRefreshService.refreshAfterTransactionChange()
             dismiss()
         } else {
             errorMessage = transactionService.errorMessage ?? "Failed to create transfer."
@@ -230,4 +231,5 @@ struct TransferSheet: View {
     TransferSheet()
         .environment(TransactionService())
         .environment(AccountService())
+        .environment(DataRefreshService(accountService: AccountService(), envelopeService: EnvelopeService(), transactionService: TransactionService()))
 }

@@ -12,6 +12,7 @@ struct EditTransactionSheet: View {
     @Environment(TransactionService.self) private var transactionService
     @Environment(AccountService.self) private var accountService
     @Environment(EnvelopeService.self) private var envelopeService
+    @Environment(DataRefreshService.self) private var dataRefreshService
 
     let transaction: TransactionResponse
 
@@ -245,7 +246,7 @@ struct EditTransactionSheet: View {
         )
 
         if success {
-            await accountService.fetchAccounts()
+            await dataRefreshService.refreshAfterTransactionChange()
             dismiss()
         } else {
             errorMessage = transactionService.errorMessage ?? "Failed to update transaction."
@@ -266,4 +267,5 @@ struct EditTransactionSheet: View {
     .environment(TransactionService())
     .environment(AccountService())
     .environment(EnvelopeService())
+    .environment(DataRefreshService(accountService: AccountService(), envelopeService: EnvelopeService(), transactionService: TransactionService()))
 }

@@ -83,8 +83,17 @@ final class EnvelopeService {
     }
 
     /// Remaining per envelope: allocatedBalance - |totalSpent|
-    func remaining(for envelope: EnvelopeResponse) -> Decimal {
+    /// For CC Payment envelopes, uses effective funding (accounting for source shortfall).
+    func remaining(
+        for envelope: EnvelopeResponse,
+        accounts: [BankAccountResponse] = [],
+        transactions: [TransactionResponse] = []
+    ) -> Decimal {
         let spent = totalSpentMap[envelope.id ?? ""] ?? Decimal.zero
+        if envelope.isCCPayment && !accounts.isEmpty {
+            let effective = ccEffectiveFunding(for: envelope, accounts: accounts, transactions: transactions)
+            return effective - spent
+        }
         return envelope.allocatedBalance - spent
     }
 
@@ -360,6 +369,147 @@ final class EnvelopeService {
             errorMessage = "Failed to update envelope."
             return false
         }
+    }
+
+    // MARK: - CC Payment Helpers
+
+    /// Look up the linked credit card's current balance (debt) for a CC Payment envelope.
+    func cardBalance(for envelope: EnvelopeResponse, accounts: [BankAccountResponse]) -> Decimal {
+        guard envelope.isCCPayment, let linkedId = envelope.linkedAccountId else { return Decimal.zero }
+        return accounts.first { $0.id == linkedId }?.currentBalance ?? Decimal.zero
+    }
+
+    /// Compute the effective funding for a CC Payment envelope, accounting for
+    /// overspent source envelopes.
+    ///
+    /// When a CC purchase is assigned to a regular envelope, the backend auto-moves
+    /// the full purchase amount to the CC Payment envelope's allocation, regardless
+    /// of whether the source envelope has enough allocated. If the source envelope
+    /// is later reduced (or was never fully funded), the CC Payment envelope's raw
+    /// `allocatedBalance` overstates how much is actually backed.
+    ///
+    /// This method subtracts the shortfall from overspent source envelopes,
+    /// giving CC spending priority over cash spending (YNAB model).
+    func ccEffectiveFunding(
+        for envelope: EnvelopeResponse,
+        accounts: [BankAccountResponse],
+        transactions: [TransactionResponse]
+    ) -> Decimal {
+        guard envelope.isCCPayment, let ccAccountId = envelope.linkedAccountId else {
+            return envelope.allocatedBalance
+        }
+
+        // If no transactions loaded yet, fall back to raw allocation
+        guard !transactions.isEmpty else { return envelope.allocatedBalance }
+
+        let shortfall = ccSourceShortfall(
+            ccAccountId: ccAccountId,
+            accounts: accounts,
+            transactions: transactions
+        )
+
+        return envelope.allocatedBalance - shortfall
+    }
+
+    /// Coverage percent: how much of the card's debt is covered by effective funding (0→1).
+    func ccCoveragePercent(
+        for envelope: EnvelopeResponse,
+        accounts: [BankAccountResponse],
+        transactions: [TransactionResponse] = []
+    ) -> Double {
+        let debt = cardBalance(for: envelope, accounts: accounts)
+        guard debt > 0 else { return 1.0 }
+        let effective = ccEffectiveFunding(for: envelope, accounts: accounts, transactions: transactions)
+        return max(0, min(1.0, NSDecimalNumber(decimal: effective / debt).doubleValue))
+    }
+
+    /// Whether a CC Payment envelope is underfunded (debt exceeds effective funding).
+    func isUnderfunded(
+        _ envelope: EnvelopeResponse,
+        accounts: [BankAccountResponse],
+        transactions: [TransactionResponse] = []
+    ) -> Bool {
+        if envelope.isCCPayment {
+            let debt = cardBalance(for: envelope, accounts: accounts)
+            let effective = ccEffectiveFunding(for: envelope, accounts: accounts, transactions: transactions)
+            return debt > effective
+        }
+        return remaining(for: envelope) < 0
+    }
+
+    /// Total credit card debt across all CC Payment envelopes in a category.
+    func ccCategoryTotalDebt(categoryId: String, accounts: [BankAccountResponse]) -> Decimal {
+        let categoryEnvelopes = envelopesByCategory[categoryId] ?? []
+        return categoryEnvelopes.reduce(Decimal.zero) { $0 + cardBalance(for: $1, accounts: accounts) }
+    }
+
+    /// Total effective funding across all CC Payment envelopes in a category.
+    func ccCategoryTotalFunded(
+        categoryId: String,
+        accounts: [BankAccountResponse] = [],
+        transactions: [TransactionResponse] = []
+    ) -> Decimal {
+        let categoryEnvelopes = envelopesByCategory[categoryId] ?? []
+        return categoryEnvelopes.reduce(Decimal.zero) { sum, env in
+            sum + ccEffectiveFunding(for: env, accounts: accounts, transactions: transactions)
+        }
+    }
+
+    // MARK: - CC Source Shortfall (Private)
+
+    /// Compute the funding shortfall from overspent source envelopes for a given CC account.
+    ///
+    /// For each regular envelope that has CC purchase transactions on the given card:
+    /// - Compute the total CC spending (all cards) from that envelope
+    /// - If total CC spending exceeds the envelope's allocation, CC spending is underfunded
+    /// - Attribute the shortfall proportionally to this card
+    ///
+    /// CC spending gets priority over cash spending: an envelope's allocation covers
+    /// CC purchases first, then any remainder covers cash. This matches YNAB behavior.
+    private func ccSourceShortfall(
+        ccAccountId: String,
+        accounts: [BankAccountResponse],
+        transactions: [TransactionResponse]
+    ) -> Decimal {
+        let ccAccountIds = Set(accounts.filter { $0.resolvedType.isCreditCard }.compactMap(\.id))
+        let ccPaymentEnvelopeIds = Set(envelopes.filter(\.isCCPayment).compactMap(\.id))
+
+        // Group CC purchase transactions by source envelope
+        var totalCCSpendPerEnvelope: [String: Decimal] = [:]
+        var thisCardSpendPerEnvelope: [String: Decimal] = [:]
+
+        for txn in transactions {
+            guard let bankId = txn.bankAccountId,
+                  let envId = txn.envelopeId,
+                  ccAccountIds.contains(bankId),
+                  txn.amount < 0, // purchases only
+                  !ccPaymentEnvelopeIds.contains(envId) // not CC Payment envelopes
+            else { continue }
+
+            let absAmt: Decimal = -txn.amount
+            totalCCSpendPerEnvelope[envId, default: .zero] += absAmt
+            if bankId == ccAccountId {
+                thisCardSpendPerEnvelope[envId, default: .zero] += absAmt
+            }
+        }
+
+        // Compute shortfall per source envelope, attributed to this card
+        var totalShortfall: Decimal = .zero
+
+        for (envId, thisCardSpend) in thisCardSpendPerEnvelope where thisCardSpend > 0 {
+            guard let sourceEnvelope = envelopes.first(where: { $0.id == envId }) else { continue }
+
+            let allCCSpend = totalCCSpendPerEnvelope[envId] ?? thisCardSpend
+            // CC spending gets priority: shortfall only when CC spend exceeds allocation
+            let envelopeShortfall = max(.zero, allCCSpend - sourceEnvelope.allocatedBalance)
+            guard envelopeShortfall > 0 else { continue }
+
+            // Attribute proportionally to this card
+            let proportion = thisCardSpend / allCCSpend
+            totalShortfall += envelopeShortfall * proportion
+        }
+
+        return totalShortfall
     }
 
     // MARK: - Allocation

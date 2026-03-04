@@ -10,6 +10,7 @@ import SwiftUI
 struct PlaidAccountMappingSheet: View {
     @Environment(PlaidService.self) private var plaidService
     @Environment(AccountService.self) private var accountService
+    @Environment(DataRefreshService.self) private var dataRefreshService
     @Environment(\.dismiss) private var dismiss
 
     let linkResult: PlaidLinkResult
@@ -286,7 +287,7 @@ struct PlaidAccountMappingSheet: View {
 
         do {
             _ = try await plaidService.exchangeToken(request)
-            await accountService.fetchAccounts()
+            await dataRefreshService.refreshAfterAccountChange()
             await plaidService.fetchPlaidItems()
             dismiss()
         } catch let error as APIError {
