@@ -214,6 +214,7 @@ struct CreateEnvelopeSheet: View {
                         .disabled(!isValid || isSubmitting)
                         .padding(.horizontal, AppDesign.paddingLg)
                         .padding(.top, AppDesign.paddingSm)
+                        .padding(.bottom, AppDesign.paddingXl)
                     }
                 }
             }
@@ -232,7 +233,7 @@ struct CreateEnvelopeSheet: View {
                 Text(errorMessage)
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
 

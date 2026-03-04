@@ -307,7 +307,15 @@ final class EnvelopeService {
         }
     }
 
-    func updateEnvelope(_ envelope: EnvelopeResponse, name: String) async -> Bool {
+    func updateEnvelope(
+        _ envelope: EnvelopeResponse,
+        name: String? = nil,
+        goalType: GoalType? = nil,
+        goalAmount: Decimal? = nil,
+        monthlyGoalTarget: Decimal? = nil,
+        goalTargetDate: String? = nil,
+        clearGoal: Bool = false
+    ) async -> Bool {
         guard let id = envelope.id else { return false }
         errorMessage = nil
 
@@ -316,14 +324,14 @@ final class EnvelopeService {
             id: envelope.id,
             appUserId: envelope.appUserId,
             envelopeCategoryId: envelope.envelopeCategoryId,
-            name: name,
+            name: name ?? envelope.name,
             allocatedBalance: envelope.allocatedBalance,
             envelopeType: envelope.envelopeType,
             linkedAccountId: envelope.linkedAccountId,
-            goalAmount: envelope.goalAmount,
-            monthlyGoalTarget: envelope.monthlyGoalTarget,
-            goalTargetDate: envelope.goalTargetDate,
-            goalType: envelope.goalType,
+            goalAmount: clearGoal ? nil : (goalAmount ?? envelope.goalAmount),
+            monthlyGoalTarget: clearGoal ? nil : (monthlyGoalTarget ?? envelope.monthlyGoalTarget),
+            goalTargetDate: clearGoal ? nil : (goalTargetDate ?? envelope.goalTargetDate),
+            goalType: clearGoal ? nil : (goalType ?? envelope.goalType),
             createdAt: envelope.createdAt
         )
 

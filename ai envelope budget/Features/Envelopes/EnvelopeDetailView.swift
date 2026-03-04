@@ -16,6 +16,7 @@ struct EnvelopeDetailView: View {
     @State private var showEditName = false
     @State private var showEditAllocation = false
     @State private var showDeleteConfirmation = false
+    @State private var showGoalSheet = false
     @State private var editedName = ""
     @State private var editedAllocation = ""
     @State private var isDeleting = false
@@ -96,6 +97,12 @@ struct EnvelopeDetailView: View {
                             Label("Rename", systemImage: "pencil")
                         }
 
+                        Button {
+                            showGoalSheet = true
+                        } label: {
+                            Label(envelope.hasGoal ? "Edit Goal" : "Set Goal", systemImage: "target")
+                        }
+
                         Divider()
 
                         Button(role: .destructive) {
@@ -141,6 +148,11 @@ struct EnvelopeDetailView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Are you sure? This will remove the envelope and all its allocations.")
+        }
+        .sheet(isPresented: $showGoalSheet) {
+            if let envelope {
+                SavingsGoalSheet(envelope: envelope)
+            }
         }
     }
 
@@ -262,6 +274,9 @@ struct EnvelopeDetailView: View {
                 if let goalType = envelope.goalType {
                     Divider().overlay(Color.borderSubtle)
                     goalRow(envelope, goalType: goalType)
+                } else if !envelope.isCCPayment {
+                    Divider().overlay(Color.borderSubtle)
+                    setGoalButton
                 }
             }
             .glassCard()
@@ -269,35 +284,80 @@ struct EnvelopeDetailView: View {
     }
 
     private func goalRow(_ envelope: EnvelopeResponse, goalType: GoalType) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Image(systemName: goalType.icon)
-                        .font(.caption)
-                        .foregroundStyle(Color.accentCyan)
-                    Text("\(goalType.displayName) Goal")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.textSecondary)
-                }
+        Button {
+            showGoalSheet = true
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Image(systemName: goalType.icon)
+                            .font(.caption)
+                            .foregroundStyle(Color.accentCyan)
+                        Text("\(goalType.displayName) Goal")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.textSecondary)
+                    }
 
-                if let target = envelope.goalAmount, goalType == .target {
-                    Text("Target: \(formatCurrency(target))")
-                        .font(.caption)
-                        .foregroundStyle(Color.textMuted)
+                    if let target = envelope.goalAmount, goalType == .target {
+                        Text("Target: \(formatCurrency(target))")
+                            .font(.caption)
+                            .foregroundStyle(Color.textMuted)
+                    }
+                    if let monthly = envelope.monthlyGoalTarget {
+                        Text("Goal: \(formatCurrency(monthly))/\(goalType == .weekly ? "wk" : "mo")")
+                            .font(.caption)
+                            .foregroundStyle(Color.textMuted)
+                    }
                 }
-                if let monthly = envelope.monthlyGoalTarget {
-                    Text("Goal: \(formatCurrency(monthly))/\(goalType == .weekly ? "wk" : "mo")")
+                Spacer()
+                HStack(spacing: 4) {
+                    Text("Edit")
                         .font(.caption)
-                        .foregroundStyle(Color.textMuted)
+                        .foregroundStyle(Color.accentCyan.opacity(0.7))
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(Color.accentCyan.opacity(0.6))
                 }
             }
-            Spacer()
+            .padding(.horizontal, AppDesign.paddingMd)
+            .padding(.vertical, 12)
         }
-        .padding(.horizontal, AppDesign.paddingMd)
-        .padding(.vertical, 12)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Danger Section
+
+    private var setGoalButton: some View {
+        Button {
+            showGoalSheet = true
+        } label: {
+            HStack {
+                HStack(spacing: 4) {
+                    Image(systemName: "target")
+                        .font(.caption)
+                        .foregroundStyle(Color.accentCyan)
+                    Text("Savings Goal")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.textSecondary)
+                }
+                Spacer()
+                HStack(spacing: 4) {
+                    Text("Set Goal")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color.accentCyan)
+                    Image(systemName: "plus.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(Color.accentCyan.opacity(0.6))
+                }
+            }
+            .padding(.horizontal, AppDesign.paddingMd)
+            .padding(.vertical, 12)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Danger Section (delete)
 
     private func dangerSection(_ envelope: EnvelopeResponse) -> some View {
         VStack(alignment: .leading, spacing: AppDesign.paddingSm) {
