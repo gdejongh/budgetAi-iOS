@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DB00000100000001000000A1 /* LinkKit in Frameworks */ = {isa = PBXBuildFile; productRef = DB00000100000001000000A2 /* LinkKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		DBAF496E2F5794770083A44C /* ai envelope budget.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ai envelope budget.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DB00000100000001000000A1 /* LinkKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = "ai envelope budget";
 			packageProductDependencies = (
+				DB00000100000001000000A2 /* LinkKit */,
 			);
 			productName = "ai envelope budget";
 			productReference = DBAF496E2F5794770083A44C /* ai envelope budget.app */;
@@ -98,6 +104,9 @@
 			productRefGroup = DBAF496F2F5794770083A44C /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				DB00000100000001000000A3 /* XCRemoteSwiftPackageReference "plaid-link-ios" */,
+			);
 			targets = (
 				DBAF496D2F5794770083A44C /* ai envelope budget */,
 			);
@@ -328,6 +337,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DB00000100000001000000A3 /* XCRemoteSwiftPackageReference "plaid-link-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/plaid/plaid-link-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DB00000100000001000000A2 /* LinkKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DB00000100000001000000A3 /* XCRemoteSwiftPackageReference "plaid-link-ios" */;
+			productName = LinkKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = DBAF49662F5794770083A44C /* Project object */;
 }

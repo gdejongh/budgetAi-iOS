@@ -9,7 +9,11 @@ import SwiftUI
 
 struct AccountsView: View {
     @Environment(AccountService.self) private var accountService
+    @Environment(PlaidService.self) private var plaidService
     @State private var showCreateSheet = false
+    @State private var showPlaidMapping = false
+    @State private var plaidLinkResult: PlaidLinkResult?
+    @State private var isConnectingBank = false
 
     var body: some View {
         Group {
@@ -21,10 +25,17 @@ struct AccountsView: View {
                 } description: {
                     Text("Add a bank account or credit card to start tracking your finances.")
                 } actions: {
-                    Button("Add Account", systemImage: "plus.circle.fill") {
-                        showCreateSheet = true
+                    VStack(spacing: 12) {
+                        Button("Connect Bank", systemImage: "link.circle.fill") {
+                            Task { await connectBank() }
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button("Add Manually", systemImage: "plus.circle.fill") {
+                            showCreateSheet = true
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.borderedProminent)
                 }
             } else {
                 accountsList
@@ -34,18 +45,39 @@ struct AccountsView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showCreateSheet = true
+                Menu {
+                    Button {
+                        Task { await connectBank() }
+                    } label: {
+                        Label("Connect Bank", systemImage: "link.circle.fill")
+                    }
+
+                    Button {
+                        showCreateSheet = true
+                    } label: {
+                        Label("Add Manually", systemImage: "plus.circle")
+                    }
                 } label: {
-                    Image(systemName: "plus")
+                    if isConnectingBank {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }
         .sheet(isPresented: $showCreateSheet) {
             CreateAccountSheet()
         }
+        .sheet(isPresented: $showPlaidMapping) {
+            if let result = plaidLinkResult {
+                PlaidAccountMappingSheet(linkResult: result)
+            }
+        }
         .refreshable {
             await accountService.fetchAccounts()
+            await plaidService.fetchPlaidItems()
         }
         .navigationDestination(for: String.self) { accountId in
             AccountDetailView(accountId: accountId)
@@ -53,6 +85,9 @@ struct AccountsView: View {
         .task {
             if accountService.accounts.isEmpty {
                 await accountService.fetchAccounts()
+            }
+            if plaidService.plaidItems.isEmpty {
+                await plaidService.fetchPlaidItems()
             }
         }
     }
@@ -122,8 +157,27 @@ struct AccountsView: View {
                     }
                 }
             }
+
+            // Plaid Connections Section
+            PlaidConnectionsSection()
         }
         .listStyle(.insetGrouped)
+    }
+
+    // MARK: - Actions
+
+    private func connectBank() async {
+        isConnectingBank = true
+        do {
+            let result = try await plaidService.openPlaidLink()
+            plaidLinkResult = result
+            showPlaidMapping = true
+        } catch let error as PlaidLinkError where error.errorDescription == "PLAID_LINK_DISMISSED" {
+            // User dismissed — not an error
+        } catch {
+            // Error is already captured in plaidService.errorMessage
+        }
+        isConnectingBank = false
     }
 
     // MARK: - Helpers
@@ -143,6 +197,7 @@ struct AccountsView: View {
 #Preview {
     NavigationStack {
         AccountsView()
+            .environment(PlaidService())
             .environment(AccountService())
     }
 }

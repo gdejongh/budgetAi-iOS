@@ -12,6 +12,7 @@ struct RootView: View {
     @State private var accountService = AccountService()
     @State private var envelopeService = EnvelopeService()
     @State private var transactionService = TransactionService()
+    @State private var plaidService = PlaidService()
     @State private var selectedTab: AppTab = .dashboard
 
     var body: some View {
@@ -46,6 +47,7 @@ struct RootView: View {
                 .environment(accountService)
                 .environment(envelopeService)
                 .environment(transactionService)
+                .environment(plaidService)
                 .transition(.opacity)
             } else {
                 NavigationStack {
