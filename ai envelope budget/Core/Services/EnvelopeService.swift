@@ -1,0 +1,384 @@
+//
+//  EnvelopeService.swift
+//  ai envelope budget
+//
+//  Created on 3/3/26.
+//
+
+import Foundation
+import Observation
+
+@Observable
+@MainActor
+final class EnvelopeService {
+    // MARK: - State
+
+    var envelopes: [EnvelopeResponse] = []
+    var categories: [EnvelopeCategoryResponse] = []
+    var monthlyAllocations: [EnvelopeAllocationResponse] = []
+    var spentSummaries: [EnvelopeSpentSummaryResponse] = []
+    var isLoading = false
+    var errorMessage: String?
+
+    /// Currently viewed month (first-of-month)
+    var viewedMonth: Date = {
+        let cal = Calendar.current
+        let now = Date()
+        return cal.date(from: cal.dateComponents([.year, .month], from: now))!
+    }()
+
+    // MARK: - Computed Properties
+
+    /// Categories sorted: CC_PAYMENT first, then alphabetical
+    var sortedCategories: [EnvelopeCategoryResponse] {
+        categories.sorted { a, b in
+            if a.isCCPayment != b.isCCPayment { return a.isCCPayment }
+            return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+        }
+    }
+
+    /// Standard categories only
+    var standardCategories: [EnvelopeCategoryResponse] {
+        categories.filter { !$0.isCCPayment }
+    }
+
+    /// Envelopes grouped by category ID
+    var envelopesByCategory: [String: [EnvelopeResponse]] {
+        Dictionary(grouping: envelopes) { $0.envelopeCategoryId ?? "" }
+    }
+
+    /// Monthly allocation lookup: envelopeId → amount
+    var monthlyAllocationMap: [String: Decimal] {
+        var map: [String: Decimal] = [:]
+        for alloc in monthlyAllocations {
+            if let id = alloc.envelopeId {
+                map[id] = alloc.amount ?? Decimal.zero
+            }
+        }
+        return map
+    }
+
+    /// Spent lookup: envelopeId → |periodSpent| for the viewed month
+    var spentMap: [String: Decimal] {
+        var map: [String: Decimal] = [:]
+        for summary in spentSummaries {
+            if let id = summary.envelopeId {
+                let spent = summary.periodSpent ?? Decimal.zero
+                map[id] = spent < 0 ? -spent : spent
+            }
+        }
+        return map
+    }
+
+    /// Total spent all-time lookup: envelopeId → |totalSpent|
+    var totalSpentMap: [String: Decimal] {
+        var map: [String: Decimal] = [:]
+        for summary in spentSummaries {
+            if let id = summary.envelopeId {
+                let spent = summary.totalSpent ?? Decimal.zero
+                map[id] = spent < 0 ? -spent : spent
+            }
+        }
+        return map
+    }
+
+    /// Remaining per envelope: allocatedBalance - |totalSpent|
+    func remaining(for envelope: EnvelopeResponse) -> Decimal {
+        let spent = totalSpentMap[envelope.id ?? ""] ?? Decimal.zero
+        return envelope.allocatedBalance - spent
+    }
+
+    /// Monthly allocation for a specific envelope in the viewed month
+    func monthlyAllocation(for envelope: EnvelopeResponse) -> Decimal {
+        monthlyAllocationMap[envelope.id ?? ""] ?? Decimal.zero
+    }
+
+    /// Monthly spent for a specific envelope
+    func monthlySpent(for envelope: EnvelopeResponse) -> Decimal {
+        spentMap[envelope.id ?? ""] ?? Decimal.zero
+    }
+
+    /// Total of all envelopes' allocatedBalance
+    var totalAllocated: Decimal {
+        envelopes.reduce(Decimal.zero) { $0 + $1.allocatedBalance }
+    }
+
+    /// Total of all monthly allocations for the viewed month
+    var totalMonthlyAllocated: Decimal {
+        monthlyAllocations.reduce(Decimal.zero) { $0 + ($1.amount ?? Decimal.zero) }
+    }
+
+    /// Total envelopes count
+    var envelopeCount: Int {
+        envelopes.count
+    }
+
+    /// Total categories count
+    var categoryCount: Int {
+        categories.count
+    }
+
+    // MARK: - Dependencies
+
+    private let api: APIClient
+
+    // MARK: - Init
+
+    init(api: APIClient = .shared) {
+        self.api = api
+    }
+
+    // MARK: - Month Navigation
+
+    func previousMonth() {
+        let cal = Calendar.current
+        if let newMonth = cal.date(byAdding: .month, value: -1, to: viewedMonth) {
+            viewedMonth = newMonth
+            Task { await loadMonthData() }
+        }
+    }
+
+    func nextMonth() {
+        let cal = Calendar.current
+        if let newMonth = cal.date(byAdding: .month, value: 1, to: viewedMonth) {
+            viewedMonth = newMonth
+            Task { await loadMonthData() }
+        }
+    }
+
+    var viewedMonthString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: viewedMonth)
+    }
+
+    private var viewedMonthParam: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: viewedMonth)
+    }
+
+    private var monthStartDate: String { viewedMonthParam }
+
+    private var monthEndDate: String {
+        let cal = Calendar.current
+        guard let nextMonth = cal.date(byAdding: .month, value: 1, to: viewedMonth),
+              let lastDay = cal.date(byAdding: .day, value: -1, to: nextMonth) else {
+            return viewedMonthParam
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: lastDay)
+    }
+
+    // MARK: - Load All Data
+
+    func loadAll() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            async let categoriesReq: [EnvelopeCategoryResponse] = api.request(
+                .get, path: "/api/envelope-categories", authenticated: true
+            )
+            async let envelopesReq: [EnvelopeResponse] = api.request(
+                .get, path: "/api/envelopes", authenticated: true
+            )
+
+            categories = try await categoriesReq
+            envelopes = try await envelopesReq
+
+            await loadMonthData()
+        } catch let error as APIError {
+            errorMessage = error.errorDescription
+        } catch {
+            errorMessage = "Failed to load envelopes."
+        }
+
+        isLoading = false
+    }
+
+    /// Load month-specific data (allocations + spent summary)
+    func loadMonthData() async {
+        do {
+            async let allocReq: [EnvelopeAllocationResponse] = api.request(
+                .get,
+                path: "/api/envelopes/allocations",
+                queryItems: [URLQueryItem(name: "month", value: viewedMonthParam)],
+                authenticated: true
+            )
+            async let spentReq: [EnvelopeSpentSummaryResponse] = api.request(
+                .get,
+                path: "/api/envelopes/spent-summary",
+                queryItems: [
+                    URLQueryItem(name: "startDate", value: monthStartDate),
+                    URLQueryItem(name: "endDate", value: monthEndDate)
+                ],
+                authenticated: true
+            )
+
+            monthlyAllocations = try await allocReq
+            spentSummaries = try await spentReq
+        } catch {
+            // Silently fail for month data — main data is already loaded
+        }
+    }
+
+    // MARK: - Category CRUD
+
+    func createCategory(name: String) async -> Bool {
+        errorMessage = nil
+        let request = CreateEnvelopeCategoryRequest(name: name)
+
+        do {
+            let newCategory: EnvelopeCategoryResponse = try await api.request(
+                .post, path: "/api/envelope-categories", body: request, authenticated: true
+            )
+            categories.append(newCategory)
+            return true
+        } catch let error as APIError {
+            errorMessage = error.errorDescription
+            return false
+        } catch {
+            errorMessage = "Failed to create category."
+            return false
+        }
+    }
+
+    func deleteCategory(_ category: EnvelopeCategoryResponse) async -> Bool {
+        guard let id = category.id else { return false }
+        errorMessage = nil
+
+        do {
+            try await api.requestVoid(.delete, path: "/api/envelope-categories/\(id)", authenticated: true)
+            categories.removeAll { $0.id == id }
+            envelopes.removeAll { $0.envelopeCategoryId == id }
+            return true
+        } catch let error as APIError {
+            errorMessage = error.errorDescription
+            return false
+        } catch {
+            errorMessage = "Failed to delete category."
+            return false
+        }
+    }
+
+    // MARK: - Envelope CRUD
+
+    func createEnvelope(name: String, categoryId: String, initialAllocation: Decimal) async -> Bool {
+        errorMessage = nil
+        let request = CreateEnvelopeRequest(
+            name: name,
+            allocatedBalance: initialAllocation,
+            envelopeCategoryId: categoryId
+        )
+
+        do {
+            let newEnvelope: EnvelopeResponse = try await api.request(
+                .post, path: "/api/envelopes", body: request, authenticated: true
+            )
+            envelopes.append(newEnvelope)
+            // Reload month data to get the new allocation
+            await loadMonthData()
+            return true
+        } catch let error as APIError {
+            errorMessage = error.errorDescription
+            return false
+        } catch {
+            errorMessage = "Failed to create envelope."
+            return false
+        }
+    }
+
+    func deleteEnvelope(_ envelope: EnvelopeResponse) async -> Bool {
+        guard let id = envelope.id else { return false }
+        errorMessage = nil
+
+        do {
+            try await api.requestVoid(.delete, path: "/api/envelopes/\(id)", authenticated: true)
+            envelopes.removeAll { $0.id == id }
+            return true
+        } catch let error as APIError {
+            errorMessage = error.errorDescription
+            return false
+        } catch {
+            errorMessage = "Failed to delete envelope."
+            return false
+        }
+    }
+
+    func updateEnvelope(_ envelope: EnvelopeResponse, name: String) async -> Bool {
+        guard let id = envelope.id else { return false }
+        errorMessage = nil
+
+        // Build the full DTO for PUT (backend expects full EnvelopeDTO)
+        let body = EnvelopeResponse(
+            id: envelope.id,
+            appUserId: envelope.appUserId,
+            envelopeCategoryId: envelope.envelopeCategoryId,
+            name: name,
+            allocatedBalance: envelope.allocatedBalance,
+            envelopeType: envelope.envelopeType,
+            linkedAccountId: envelope.linkedAccountId,
+            goalAmount: envelope.goalAmount,
+            monthlyGoalTarget: envelope.monthlyGoalTarget,
+            goalTargetDate: envelope.goalTargetDate,
+            goalType: envelope.goalType,
+            createdAt: envelope.createdAt
+        )
+
+        do {
+            let updated: EnvelopeResponse = try await api.request(
+                .put, path: "/api/envelopes/\(id)", body: body, authenticated: true
+            )
+            if let index = envelopes.firstIndex(where: { $0.id == id }) {
+                envelopes[index] = updated
+            }
+            return true
+        } catch let error as APIError {
+            errorMessage = error.errorDescription
+            return false
+        } catch {
+            errorMessage = "Failed to update envelope."
+            return false
+        }
+    }
+
+    // MARK: - Allocation
+
+    func setAllocation(for envelope: EnvelopeResponse, amount: Decimal) async -> Bool {
+        guard let id = envelope.id else { return false }
+        errorMessage = nil
+
+        let request = SetAllocationRequest(amount: amount)
+
+        do {
+            let _: EnvelopeAllocationResponse = try await api.request(
+                .put,
+                path: "/api/envelopes/\(id)/allocation",
+                body: request,
+                queryItems: [URLQueryItem(name: "month", value: viewedMonthParam)],
+                authenticated: true
+            )
+            // Reload everything to get updated allocatedBalance + month allocations
+            async let envelopesReq: [EnvelopeResponse] = api.request(
+                .get, path: "/api/envelopes", authenticated: true
+            )
+            async let allocReq: [EnvelopeAllocationResponse] = api.request(
+                .get,
+                path: "/api/envelopes/allocations",
+                queryItems: [URLQueryItem(name: "month", value: viewedMonthParam)],
+                authenticated: true
+            )
+            envelopes = try await envelopesReq
+            monthlyAllocations = try await allocReq
+            return true
+        } catch let error as APIError {
+            errorMessage = error.errorDescription
+            return false
+        } catch {
+            errorMessage = "Failed to update allocation."
+            return false
+        }
+    }
+}
