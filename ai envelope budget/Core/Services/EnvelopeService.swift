@@ -127,6 +127,38 @@ final class EnvelopeService {
         spentMap.values.reduce(Decimal.zero, +)
     }
 
+    /// Unallocated funds: totalCash - totalAllocated - totalAllTimeSpent
+    /// Matches Angular's calculation — CC debt is NOT subtracted because CC Payment
+    /// envelope allocations already account for it (avoids double-counting).
+    func unallocatedAmount(accounts: [BankAccountResponse], transactions: [TransactionResponse]) -> Decimal {
+        let totalCash = accounts
+            .filter { !$0.resolvedType.isCreditCard }
+            .reduce(Decimal.zero) { $0 + $1.currentBalance }
+        let totalAllTimeSpent = transactions
+            .filter { $0.envelopeId != nil }
+            .reduce(Decimal.zero) { $0 + $1.amount }
+        return totalCash - totalAllocated - totalAllTimeSpent
+    }
+
+    // MARK: - Category Summary Helpers
+
+    /// Total monthly allocation for all envelopes in a category
+    func categoryMonthlyAllocated(categoryId: String) -> Decimal {
+        let categoryEnvelopes = envelopesByCategory[categoryId] ?? []
+        return categoryEnvelopes.reduce(Decimal.zero) { $0 + monthlyAllocation(for: $1) }
+    }
+
+    /// Total monthly spent for all envelopes in a category
+    func categoryMonthlySpent(categoryId: String) -> Decimal {
+        let categoryEnvelopes = envelopesByCategory[categoryId] ?? []
+        return categoryEnvelopes.reduce(Decimal.zero) { $0 + monthlySpent(for: $1) }
+    }
+
+    /// Remaining for a category: allocated - spent
+    func categoryRemaining(categoryId: String) -> Decimal {
+        categoryMonthlyAllocated(categoryId: categoryId) - categoryMonthlySpent(categoryId: categoryId)
+    }
+
     /// Total envelopes count
     var envelopeCount: Int {
         envelopes.count

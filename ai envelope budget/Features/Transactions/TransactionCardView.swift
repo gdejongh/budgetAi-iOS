@@ -77,6 +77,7 @@ struct TransactionCardView: View {
             }
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
     }
 
     // MARK: - Icon View

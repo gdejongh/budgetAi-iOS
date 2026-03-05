@@ -75,7 +75,15 @@ final class TransactionService {
             case .date:
                 let dateA = a.transactionDate ?? ""
                 let dateB = b.transactionDate ?? ""
-                comparison = dateA.compare(dateB)
+                let dateComparison = dateA.compare(dateB)
+                if dateComparison != .orderedSame {
+                    comparison = dateComparison
+                } else {
+                    // Use createdAt as tiebreaker for same-day transactions
+                    let createdA = a.createdAt ?? ""
+                    let createdB = b.createdAt ?? ""
+                    comparison = createdA.compare(createdB)
+                }
             case .amount:
                 if a.amount == b.amount { comparison = .orderedSame }
                 else if a.amount < b.amount { comparison = .orderedAscending }

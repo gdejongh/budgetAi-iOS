@@ -21,6 +21,27 @@ struct EnvelopesView: View {
     @State private var detailEnvelopeId: String?
     @FocusState private var allocationFieldFocused: Bool
     @State private var hasAppeared = false
+    @State private var collapsedCategoryIds: Set<String> = {
+        let saved = UserDefaults.standard.stringArray(forKey: "collapsedCategoryIds") ?? []
+        return Set(saved)
+    }()
+
+    // MARK: - Collapse Helpers
+
+    private func isCategoryCollapsed(_ id: String) -> Bool {
+        collapsedCategoryIds.contains(id)
+    }
+
+    private func toggleCategory(_ id: String) {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            if collapsedCategoryIds.contains(id) {
+                collapsedCategoryIds.remove(id)
+            } else {
+                collapsedCategoryIds.insert(id)
+            }
+        }
+        UserDefaults.standard.set(Array(collapsedCategoryIds), forKey: "collapsedCategoryIds")
+    }
 
     var body: some View {
         Group {
@@ -144,6 +165,14 @@ struct EnvelopesView: View {
             }
             .staggeredFadeIn(index: 0, isVisible: hasAppeared)
 
+            // Unallocated Banner
+            if !envelopeService.envelopes.isEmpty {
+                Section {
+                    unallocatedBanner
+                }
+                .staggeredFadeIn(index: 1, isVisible: hasAppeared)
+            }
+
             // Error banner
             if let error = envelopeService.errorMessage {
                 Section {
@@ -155,9 +184,11 @@ struct EnvelopesView: View {
                 .listRowBackground(Color.clear)
             }
 
-            // Category Sections
-            ForEach(envelopeService.sortedCategories) { category in
-                categorySection(category)
+            // Categories — single section, one rounded container
+            Section {
+                ForEach(envelopeService.sortedCategories) { category in
+                    categoryRows(category)
+                }
             }
         }
         .brandListStyle()
@@ -243,12 +274,57 @@ struct EnvelopesView: View {
         return .success
     }
 
-    // MARK: - Category Section
+    // MARK: - Unallocated Banner
 
-    private func categorySection(_ category: EnvelopeCategoryResponse) -> some View {
+    private var unallocatedBanner: some View {
+        let unallocated = envelopeService.unallocatedAmount(
+            accounts: accountService.accounts,
+            transactions: transactionService.transactions
+        )
+        let color: Color = unallocated > 0 ? .warning : unallocated < 0 ? .danger : .success
+
+        return VStack(spacing: 8) {
+            Text("Unallocated")
+                .font(.appCaption)
+                .foregroundStyle(Color.textSecondary)
+
+            Text(unallocated.asCurrency())
+                .font(.appStatLarge)
+                .foregroundStyle(color)
+
+            if unallocated < 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.appCaption)
+                        .foregroundStyle(Color.danger)
+                    Text("You have allocated more than your available cash. Adjust your allocations.")
+                        .font(.appCaption)
+                        .foregroundStyle(Color.danger)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 4)
+            } else if unallocated > 0 {
+                Text("Assign this money to your envelopes")
+                    .font(.appCaption)
+                    .foregroundStyle(Color.textMuted)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - Category Rows
+
+    @ViewBuilder
+    private func categoryRows(_ category: EnvelopeCategoryResponse) -> some View {
         let categoryEnvelopes = envelopeService.envelopesByCategory[category.id ?? ""] ?? []
+        let collapsed = isCategoryCollapsed(category.id ?? "")
 
-        return Section {
+        // Category header row (swipeable)
+        categoryHeaderRow(category: category, collapsed: collapsed)
+
+        // Only show envelope rows when expanded
+        if !collapsed {
             if categoryEnvelopes.isEmpty {
                 HStack {
                     Text("No envelopes yet")
@@ -266,6 +342,7 @@ struct EnvelopesView: View {
                         .foregroundStyle(Color.accentCyan)
                     }
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             } else {
                 ForEach(categoryEnvelopes) { envelope in
                     EnvelopeCardView(
@@ -309,88 +386,104 @@ struct EnvelopesView: View {
                         .tint(.accentCyan)
                     }
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
-        } header: {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(category.name)
+        }
+    }
+
+    // MARK: - Category Header Row
+
+    private func categoryHeaderRow(category: EnvelopeCategoryResponse, collapsed: Bool) -> some View {
+        HStack(spacing: 8) {
+            // Collapse chevron
+            Image(systemName: collapsed ? "chevron.forward" : "chevron.down")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.textSecondary)
+                .frame(width: 16)
+                .animation(.easeInOut(duration: 0.2), value: collapsed)
+
+            Text(category.name)
+                .font(.appBody)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.textPrimary)
+
+            if category.isCCPayment {
+                BadgeView(text: "AUTO", color: .warning)
+            }
+
+            Spacer()
+
+            // Right-side stats — compact, inline like YNAB
+            if category.isCCPayment, let categoryId = category.id {
+                let totalDebt = envelopeService.ccCategoryTotalDebt(categoryId: categoryId, accounts: accountService.accounts)
+                let totalFunded = envelopeService.ccCategoryTotalFunded(categoryId: categoryId, accounts: accountService.accounts, transactions: transactionService.transactions)
+                let fullyFunded = totalFunded >= totalDebt
+
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text("Funded")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.textMuted)
+                    Text(totalFunded.asCurrency())
                         .font(.appCaption)
+                        .fontWeight(.semibold)
                         .foregroundStyle(Color.textSecondary)
-
-                    if category.isCCPayment {
-                        BadgeView(text: "AUTO", color: .warning)
-                    }
-
-                    Spacer()
-
-                    if !category.isCCPayment {
-                        Button {
-                            createEnvelopeCategoryId = category.id
-                            showCreateEnvelope = true
-                        } label: {
-                            Image(systemName: "plus.circle")
-                                .font(.appCaption)
-                                .foregroundStyle(Color.accentCyan)
-                        }
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-
-                        Button {
-                            showDeleteCategory = category
-                        } label: {
-                            Image(systemName: "trash")
-                                .font(.appCaption)
-                                .foregroundStyle(Color.danger)
-                        }
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                    }
                 }
 
-                // CC Payment category summary: Total Debt / Funded / Status
-                if category.isCCPayment, let categoryId = category.id {
-                    let totalDebt = envelopeService.ccCategoryTotalDebt(categoryId: categoryId, accounts: accountService.accounts)
-                    let totalFunded = envelopeService.ccCategoryTotalFunded(categoryId: categoryId, accounts: accountService.accounts, transactions: transactionService.transactions)
-                    let fullyFunded = totalFunded >= totalDebt
-
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Total Debt")
-                                .font(.appCaption)
-                                .foregroundStyle(Color.textMuted)
-                            Text(totalDebt.asCurrency())
-                                .font(.appCaption)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(Color.textSecondary)
-                        }
-
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Funded")
-                                .font(.appCaption)
-                                .foregroundStyle(Color.textMuted)
-                            Text(totalFunded.asCurrency())
-                                .font(.appCaption)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(Color.textSecondary)
-                        }
-
-                        Spacer()
-
-                        if fullyFunded {
-                            BadgeView(text: "Fully Funded", color: .success)
-                        } else {
-                            VStack(alignment: .trailing, spacing: 1) {
-                                Text("Underfunded")
-                                    .font(.appCaption)
-                                    .foregroundStyle(Color.danger)
-                                Text((totalDebt - totalFunded).asCurrency())
-                                    .font(.appCaption)
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(Color.danger)
-                            }
-                        }
-                    }
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(fullyFunded ? "Available" : "Underfunded")
+                        .font(.system(size: 10))
+                        .foregroundStyle(fullyFunded ? Color.textMuted : Color.danger)
+                    Text(fullyFunded ? totalFunded.asCurrency() : (totalDebt - totalFunded).asCurrency())
+                        .font(.appCaption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(fullyFunded ? Color.success : Color.danger)
                 }
+            } else if let categoryId = category.id {
+                let allocated = envelopeService.categoryMonthlyAllocated(categoryId: categoryId)
+                let remaining = envelopeService.categoryRemaining(categoryId: categoryId)
+
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text("Assigned")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.textMuted)
+                    Text(allocated.asCurrency())
+                        .font(.appCaption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color.textSecondary)
+                }
+
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text("Available")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.textMuted)
+                    Text(remaining.asCurrency())
+                        .font(.appCaption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(remaining >= 0 ? Color.success : Color.danger)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            toggleCategory(category.id ?? "")
+        }
+        .listRowBackground(Color.bgSurface)
+        .swipeActions(edge: .trailing) {
+            if !category.isCCPayment {
+                Button(role: .destructive) {
+                    showDeleteCategory = category
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+
+                Button {
+                    createEnvelopeCategoryId = category.id
+                    showCreateEnvelope = true
+                } label: {
+                    Label("Add Envelope", systemImage: "plus")
+                }
+                .tint(.accentCyan)
             }
         }
     }

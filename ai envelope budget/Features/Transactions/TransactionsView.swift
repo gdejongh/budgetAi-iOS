@@ -231,11 +231,16 @@ struct TransactionsView: View {
             } else {
                 Section {
                     ForEach(displayed) { txn in
-                        TransactionCardView(
-                            transaction: txn,
-                            accountName: txn.bankAccountId.flatMap { accountMap[$0] },
-                            envelopeName: txn.envelopeId.flatMap { envelopeMap[$0] }
-                        )
+                        Button {
+                            editTransaction = txn
+                        } label: {
+                            TransactionCardView(
+                                transaction: txn,
+                                accountName: txn.bankAccountId.flatMap { accountMap[$0] },
+                                envelopeName: txn.envelopeId.flatMap { envelopeMap[$0] }
+                            )
+                        }
+                        .buttonStyle(HighlightButtonStyle())
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
                                 deleteTransaction = txn
@@ -243,14 +248,12 @@ struct TransactionsView: View {
                                 Label("Delete", systemImage: "trash")
                             }
 
-                            if txn.isEditable {
-                                Button {
-                                    editTransaction = txn
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
-                                }
-                                .tint(.warning)
+                            Button {
+                                editTransaction = txn
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
                             }
+                            .tint(.warning)
                         }
                     }
                 }
@@ -258,6 +261,17 @@ struct TransactionsView: View {
         }
         .brandListStyle()
         .onAppear { hasAppeared = true }
+    }
+}
+
+// MARK: - Highlight Button Style
+
+private struct HighlightButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.5 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 

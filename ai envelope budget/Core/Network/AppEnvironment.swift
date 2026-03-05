@@ -25,7 +25,7 @@ nonisolated enum AppEnvironment {
             #if targetEnvironment(simulator)
             return "http://localhost:8080"
             #else
-            return "http://10.0.0.233:8080"
+            return "https://api.aienvelopebudget.com"
             #endif
         case .production:
             return "https://api.aienvelopebudget.com"

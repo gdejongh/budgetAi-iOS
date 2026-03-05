@@ -57,6 +57,24 @@ struct EditTransactionSheet: View {
         NavigationStack {
             ScrollView {
                     VStack(spacing: AppDesign.paddingLg) {
+                        // Linked transaction info banner
+                        if transaction.linkedTransactionId != nil {
+                            HStack(spacing: 8) {
+                                Image(systemName: "link")
+                                    .font(.appCaption)
+                                    .foregroundStyle(Color.accentCyan)
+                                Text("Changes will also update the linked transaction.")
+                                    .font(.appCaption)
+                                    .foregroundStyle(Color.textSecondary)
+                            }
+                            .padding(AppDesign.paddingSm)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: AppDesign.cornerRadiusSm)
+                                    .fill(Color.accentCyan.opacity(0.1))
+                            )
+                        }
+
                         // Type Toggle
                         typeToggle
 
@@ -154,7 +172,9 @@ struct EditTransactionSheet: View {
                     }
                     .padding(AppDesign.paddingLg)
             }
-            .navigationTitle("Edit Transaction")
+            .navigationTitle(transaction.resolvedType == .ccPayment ? "Edit CC Payment" :
+                            transaction.resolvedType == .transfer ? "Edit Transfer" :
+                            "Edit Transaction")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -246,6 +266,20 @@ struct EditTransactionSheet: View {
         )
 
         if success {
+            // Also update linked transaction (CC payments & transfers)
+            if let linkedId = transaction.linkedTransactionId,
+               let linkedTxn = transactionService.transactions.first(where: { $0.id == linkedId }) {
+                let linkedAmount = -signedAmount
+                _ = await transactionService.updateTransaction(
+                    linkedTxn,
+                    bankAccountId: linkedTxn.bankAccountId ?? "",
+                    envelopeId: linkedTxn.envelopeId,
+                    amount: linkedAmount,
+                    description: descriptionText.isEmpty ? nil : descriptionText,
+                    merchantName: merchant.isEmpty ? nil : merchant,
+                    transactionDate: dateStr
+                )
+            }
             await dataRefreshService.refreshAfterTransactionChange()
             dismiss()
         } else {

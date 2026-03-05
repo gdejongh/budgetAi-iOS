@@ -50,6 +50,12 @@ struct CreateEnvelopeSheet: View {
         envelopeService.standardCategories
     }
 
+    /// Resolved name of the preselected category (if any)
+    private var preselectedCategoryName: String? {
+        guard let id = preselectedCategoryId else { return nil }
+        return envelopeService.categories.first { $0.id == id }?.name
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -76,8 +82,28 @@ struct CreateEnvelopeSheet: View {
                                 .autocorrectionDisabled()
                         }
 
-                        // Category Picker (if not preselected)
-                        if preselectedCategoryId == nil {
+                        // Category Picker (if not preselected) / Read-only label (if preselected)
+                        if let categoryName = preselectedCategoryName {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Category")
+                                    .font(.appCaption)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(Color.textSecondary)
+                                    .textCase(.uppercase)
+                                    .tracking(0.5)
+
+                                HStack(spacing: 8) {
+                                    Image(systemName: "folder.fill")
+                                        .font(.appCaption)
+                                        .foregroundStyle(Color.accentCyan)
+                                    Text(categoryName)
+                                        .font(.appBody)
+                                        .foregroundStyle(Color.textPrimary)
+                                }
+                                .formFieldBackground()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        } else {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("Category")
                                     .font(.appCaption)
