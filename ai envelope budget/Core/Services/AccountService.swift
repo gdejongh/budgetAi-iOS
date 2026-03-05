@@ -54,6 +54,15 @@ final class AccountService {
         self.api = api
     }
 
+    // MARK: - Clear Data
+
+    /// Resets all state. Called on logout to prevent stale cross-user data.
+    func clearData() {
+        accounts = []
+        isLoading = false
+        errorMessage = nil
+    }
+
     // MARK: - Fetch Accounts
 
     func fetchAccounts() async {

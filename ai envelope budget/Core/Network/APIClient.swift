@@ -249,6 +249,13 @@ actor APIClient {
 
     // MARK: - Error Mapping
 
+    /// Cancels any in-flight token refresh task. Called on logout to prevent
+    /// a stale refresh from overwriting a new user's tokens.
+    func cancelRefreshTask() {
+        refreshTask?.cancel()
+        refreshTask = nil
+    }
+
     private func mapError(statusCode: Int, message: String?) -> APIError {
         switch statusCode {
         case 400: return .validation(message)

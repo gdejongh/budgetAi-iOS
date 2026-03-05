@@ -34,6 +34,17 @@ final class PlaidService {
         self.api = api
     }
 
+    // MARK: - Clear Data
+
+    /// Resets all state. Called on logout to prevent stale cross-user data.
+    func clearData() {
+        plaidItems = []
+        isLoading = false
+        isLinking = false
+        errorMessage = nil
+        linkHandler = nil
+    }
+
     // MARK: - Create Link Token
 
     /// Requests a new Plaid Link token from the backend.

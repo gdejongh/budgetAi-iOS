@@ -157,9 +157,7 @@ struct TransactionsView: View {
             await transactionService.fetchTransactions()
         }
         .task {
-            if transactionService.transactions.isEmpty {
-                await transactionService.fetchTransactions()
-            }
+            await transactionService.fetchTransactions()
             if accountService.accounts.isEmpty {
                 await accountService.fetchAccounts()
             }

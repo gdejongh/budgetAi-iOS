@@ -32,6 +32,18 @@ final class TransactionService {
     /// Optional envelope filter
     var filterEnvelopeId: String?
 
+    // MARK: - Clear Data
+
+    /// Resets all state. Called on logout to prevent stale cross-user data.
+    func clearData() {
+        transactions = []
+        isLoading = false
+        errorMessage = nil
+        searchText = ""
+        filterAccountId = nil
+        filterEnvelopeId = nil
+    }
+
     // MARK: - Sort Options
 
     enum SortField: String, CaseIterable {

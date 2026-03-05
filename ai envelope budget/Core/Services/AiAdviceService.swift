@@ -28,6 +28,16 @@ final class AiAdviceService {
         self.api = api
     }
 
+    // MARK: - Clear Data
+
+    /// Resets all state. Called on logout to prevent stale cross-user data.
+    func clearData() {
+        advice = nil
+        isLoading = false
+        errorMessage = nil
+        isRateLimited = false
+    }
+
     // MARK: - Fetch Advice
 
     /// Requests AI financial advice from the backend.

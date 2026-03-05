@@ -76,12 +76,8 @@ struct AccountsView: View {
             AccountDetailView(accountId: accountId)
         }
         .task {
-            if accountService.accounts.isEmpty {
-                await accountService.fetchAccounts()
-            }
-            if plaidService.plaidItems.isEmpty {
-                await plaidService.fetchPlaidItems()
-            }
+            await accountService.fetchAccounts()
+            await plaidService.fetchPlaidItems()
         }
     }
 

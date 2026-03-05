@@ -61,6 +61,18 @@ struct RootView: View {
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.85), value: authService.isAuthenticated)
+        .onChange(of: authService.isAuthenticated) { _, isAuthenticated in
+            if !isAuthenticated {
+                // Purge all cached data to prevent stale cross-user data leakage
+                accountService.clearData()
+                plaidService.clearData()
+                transactionService.clearData()
+                envelopeService.clearData()
+                aiAdviceService.clearData()
+                dataRefreshService = nil
+                selectedTab = .dashboard
+            }
+        }
     }
 
     /// Lazily create the refresh service so the @State services are initialized first.

@@ -63,9 +63,10 @@ final class DataRefreshService {
     /// Account changes can affect envelopes (CC account creation/deletion
     /// auto-manages CC Payment envelopes) and transactions (deletion cascades).
     func refreshAfterAccountChange() async {
+        async let accounts: () = accountService.fetchAccounts()
         async let envelopes: () = envelopeService.loadAll()
         async let transactions: () = transactionService.fetchTransactions()
-        _ = await (envelopes, transactions)
+        _ = await (accounts, envelopes, transactions)
     }
 
     /// Refresh after an account balance is reconciled.

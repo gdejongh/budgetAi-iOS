@@ -27,6 +27,21 @@ final class EnvelopeService {
         return cal.date(from: cal.dateComponents([.year, .month], from: now))!
     }()
 
+    // MARK: - Clear Data
+
+    /// Resets all state. Called on logout to prevent stale cross-user data.
+    func clearData() {
+        envelopes = []
+        categories = []
+        monthlyAllocations = []
+        spentSummaries = []
+        isLoading = false
+        errorMessage = nil
+        let cal = Calendar.current
+        let now = Date()
+        viewedMonth = cal.date(from: cal.dateComponents([.year, .month], from: now))!
+    }
+
     // MARK: - Computed Properties
 
     /// Categories sorted: CC_PAYMENT first, then alphabetical

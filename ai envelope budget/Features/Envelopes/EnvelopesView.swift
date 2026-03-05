@@ -119,9 +119,7 @@ struct EnvelopesView: View {
             await envelopeService.loadAll()
         }
         .task {
-            if envelopeService.envelopes.isEmpty {
-                await envelopeService.loadAll()
-            }
+            await envelopeService.loadAll()
         }
     }
 
