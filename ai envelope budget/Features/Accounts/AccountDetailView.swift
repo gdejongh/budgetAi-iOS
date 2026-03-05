@@ -9,6 +9,7 @@ import SwiftUI
 
 struct AccountDetailView: View {
     @Environment(AccountService.self) private var accountService
+    @Environment(AppleWalletService.self) private var walletService
     @Environment(DataRefreshService.self) private var dataRefreshService
     @Environment(\.dismiss) private var dismiss
 
@@ -26,6 +27,12 @@ struct AccountDetailView: View {
 
     private var accountType: AccountType {
         account?.resolvedType ?? .checking
+    }
+
+    /// Whether this account is linked via Apple Wallet
+    private var appleWalletLink: AppleWalletAccountLink? {
+        guard let accountId = account?.id else { return nil }
+        return walletService.linkedAccounts.first { $0.bankAccountId == accountId }
     }
 
     var body: some View {
@@ -49,10 +56,21 @@ struct AccountDetailView: View {
                             LabeledContent("Institution", value: institution)
                         }
 
-                        LabeledContent(
-                            "Type",
-                            value: account.manual == true ? "Manual" : "Plaid Linked"
-                        )
+                        if let walletLink = appleWalletLink {
+                            LabeledContent("Source", value: "Apple Wallet")
+
+                            if let lastSynced = walletLink.lastSyncedAt {
+                                LabeledContent(
+                                    "Last Synced",
+                                    value: lastSynced.formatted(.relative(presentation: .named))
+                                )
+                            }
+                        } else {
+                            LabeledContent(
+                                "Type",
+                                value: account.manual == true ? "Manual" : "Plaid Linked"
+                            )
+                        }
 
                         if let createdAt = account.createdAt {
                             LabeledContent("Added", value: createdAt.asFormattedDate())
@@ -193,6 +211,10 @@ struct AccountDetailView: View {
 
                 if account.isPlaidLinked {
                     BadgeView(text: "Linked", color: .accentCyan, icon: "link")
+                }
+
+                if appleWalletLink != nil {
+                    BadgeView(text: "Apple Wallet", color: .accentCyan, icon: "wallet.bifold")
                 }
             }
         }

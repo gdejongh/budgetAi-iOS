@@ -9,11 +9,13 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AuthService.self) private var authService
+    @Environment(\.scenePhase) private var scenePhase
     @State private var accountService = AccountService()
     @State private var envelopeService = EnvelopeService()
     @State private var transactionService = TransactionService()
     @State private var plaidService = PlaidService()
     @State private var aiAdviceService = AiAdviceService()
+    @State private var appleWalletService = AppleWalletService()
     @State private var dataRefreshService: DataRefreshService?
     @State private var selectedTab: AppTab = .dashboard
 
@@ -51,7 +53,21 @@ struct RootView: View {
                 .environment(transactionService)
                 .environment(plaidService)
                 .environment(aiAdviceService)
+                .environment(appleWalletService)
                 .environment(resolvedRefreshService)
+                .task {
+                    await appleWalletService.autoSyncIfNeeded()
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    if newPhase == .active {
+                        Task {
+                            await appleWalletService.autoSyncIfNeeded()
+                            if !appleWalletService.linkedAccounts.isEmpty {
+                                await resolvedRefreshService.refreshAfterAppleWalletSync()
+                            }
+                        }
+                    }
+                }
                 .transition(.opacity)
             } else {
                 NavigationStack {
@@ -69,6 +85,7 @@ struct RootView: View {
                 transactionService.clearData()
                 envelopeService.clearData()
                 aiAdviceService.clearData()
+                appleWalletService.clearData()
                 dataRefreshService = nil
                 selectedTab = .dashboard
             }

@@ -7,5 +7,7 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSFinanceKitUsageDescription</key>
+	<string>Budget AI uses Apple Wallet data to automatically sync your Apple Card, Apple Cash, and Apple Savings transactions and balances.</string>
 </dict>
 </plist>
