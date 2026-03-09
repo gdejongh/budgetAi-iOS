@@ -9,14 +9,8 @@ import SwiftUI
 
 struct AccountsView: View {
     @Environment(AccountService.self) private var accountService
-    @Environment(PlaidService.self) private var plaidService
-    @Environment(AppleWalletService.self) private var walletService
     @Environment(DataRefreshService.self) private var dataRefreshService
     @State private var showCreateSheet = false
-    @State private var showPlaidMapping = false
-    @State private var showAppleWalletSheet = false
-    @State private var plaidLinkResult: PlaidLinkResult?
-    @State private var isConnectingBank = false
     @State private var hasAppeared = false
 
     var body: some View {
@@ -28,9 +22,9 @@ struct AccountsView: View {
                     icon: "building.columns.fill",
                     heading: "No Accounts Yet",
                     body: "Add a bank account or credit card to start tracking your finances.",
-                    actionLabel: "Connect Bank"
+                    actionLabel: "Add Account"
                 ) {
-                    Task { await connectBank() }
+                    showCreateSheet = true
                 }
             } else {
                 accountsList
@@ -42,55 +36,26 @@ struct AccountsView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
-                        Task { await connectBank() }
-                    } label: {
-                        Label("Connect Bank", systemImage: "link.circle.fill")
-                    }
-
-                    if AppleWalletService.isAvailable {
-                        Button {
-                            showAppleWalletSheet = true
-                        } label: {
-                            Label("Connect Apple Wallet", systemImage: "wallet.bifold.fill")
-                        }
-                    }
-
-                    Button {
                         showCreateSheet = true
                     } label: {
                         Label("Add Manually", systemImage: "plus.circle")
                     }
                 } label: {
-                    if isConnectingBank {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Image(systemName: "plus")
-                    }
+                    Image(systemName: "plus")
                 }
             }
         }
         .sheet(isPresented: $showCreateSheet) {
             CreateAccountSheet()
         }
-        .sheet(isPresented: $showPlaidMapping) {
-            if let result = plaidLinkResult {
-                PlaidAccountMappingSheet(linkResult: result)
-            }
-        }
-        .sheet(isPresented: $showAppleWalletSheet) {
-            AppleWalletConnectionSheet()
-        }
         .refreshable {
             await accountService.fetchAccounts()
-            await plaidService.fetchPlaidItems()
         }
         .navigationDestination(for: String.self) { accountId in
             AccountDetailView(accountId: accountId)
         }
         .task {
             await accountService.fetchAccounts()
-            await plaidService.fetchPlaidItems()
         }
     }
 
@@ -168,31 +133,9 @@ struct AccountsView: View {
                         .foregroundStyle(Color.textSecondary)
                 }
             }
-
-            // Plaid Connections Section
-            PlaidConnectionsSection()
-
-            // Apple Wallet Connections Section
-            AppleWalletConnectionsSection()
         }
         .brandListStyle()
         .onAppear { hasAppeared = true }
-    }
-
-    // MARK: - Actions
-
-    private func connectBank() async {
-        isConnectingBank = true
-        do {
-            let result = try await plaidService.openPlaidLink()
-            plaidLinkResult = result
-            showPlaidMapping = true
-        } catch let error as PlaidLinkError where error.errorDescription == "PLAID_LINK_DISMISSED" {
-            // User dismissed — not an error
-        } catch {
-            // Error is already captured in plaidService.errorMessage
-        }
-        isConnectingBank = false
     }
 
     // MARK: - Helpers
@@ -213,9 +156,7 @@ struct AccountsView: View {
 #Preview {
     NavigationStack {
         AccountsView()
-            .environment(PlaidService())
             .environment(AccountService())
-            .environment(AppleWalletService())
             .environment(DataRefreshService(accountService: AccountService(), envelopeService: EnvelopeService(), transactionService: TransactionService()))
     }
 }

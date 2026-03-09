@@ -139,24 +139,26 @@ actor APIClient {
 
         // Handle 401 with token refresh (only for authenticated requests, and only once)
         if statusCode == 401, authenticated, !isRetry {
+            // Attempt to refresh the access token
             do {
                 try await refreshAccessToken()
-                // Rebuild the request with the new token and retry once
-                urlRequest = try buildRequest(method, path: path, body: body, queryItems: queryItems, authenticated: true)
-                let (retryData, retryResponse) = try await execute(urlRequest)
-
-                guard let retryHttp = retryResponse as? HTTPURLResponse,
-                      (200...299).contains(retryHttp.statusCode) else {
-                    // Still failing after refresh — force logout
-                    onAuthFailure?()
-                    throw mapError(statusCode: statusCode, message: message)
-                }
-                return retryData
-            } catch is APIError {
-                // Refresh itself failed — force logout
+            } catch {
+                // Refresh token is invalid — force logout
                 onAuthFailure?()
                 throw APIError.unauthorized(message)
             }
+
+            // Retry the original request with the new access token
+            urlRequest = try buildRequest(method, path: path, body: body, queryItems: queryItems, authenticated: true)
+            let (retryData, retryResponse) = try await execute(urlRequest)
+
+            guard let retryHttp = retryResponse as? HTTPURLResponse,
+                  (200...299).contains(retryHttp.statusCode) else {
+                let retryStatus = (retryResponse as? HTTPURLResponse)?.statusCode ?? 0
+                let retryError = try? decoder.decode(APIErrorResponse.self, from: retryData)
+                throw mapError(statusCode: retryStatus, message: retryError?.message)
+            }
+            return retryData
         }
 
         throw mapError(statusCode: statusCode, message: message)

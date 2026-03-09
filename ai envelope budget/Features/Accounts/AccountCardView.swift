@@ -39,10 +39,6 @@ struct AccountCardView: View {
                     if accountType == .savings {
                         BadgeView(text: "Savings", color: .accentViolet)
                     }
-
-                    if account.isPlaidLinked {
-                        BadgeView(text: "Linked", color: .accentCyan, icon: "link")
-                    }
                 }
 
                 HStack(spacing: 6) {

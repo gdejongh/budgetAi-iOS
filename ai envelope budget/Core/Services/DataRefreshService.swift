@@ -91,17 +91,6 @@ final class DataRefreshService {
         // No cross-service impact currently.
     }
 
-    /// Refresh after Apple Wallet sync completes.
-    ///
-    /// Apple Wallet sync creates transactions and reconciles balances,
-    /// so all services need refreshing.
-    func refreshAfterAppleWalletSync() async {
-        async let accounts: () = accountService.fetchAccounts()
-        async let envelopes: () = envelopeService.loadAll()
-        async let transactions: () = transactionService.fetchTransactions()
-        _ = await (accounts, envelopes, transactions)
-    }
-
     /// Refresh all data across all services. Used for pull-to-refresh and
     /// initial loads.
     func refreshAll() async {

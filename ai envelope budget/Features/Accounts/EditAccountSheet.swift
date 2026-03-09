@@ -29,18 +29,14 @@ struct EditAccountSheet: View {
         )
     }
 
-    private var isManual: Bool {
-        account.manual == true || account.manual == nil
-    }
-
     private var isValid: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty
-            && (isManual ? parsedBalance != nil : true)
+            && parsedBalance != nil
     }
 
     private var hasChanges: Bool {
         let nameChanged = name.trimmingCharacters(in: .whitespaces) != account.name
-        let balanceChanged = isManual && parsedBalance != account.currentBalance
+        let balanceChanged = parsedBalance != account.currentBalance
         return nameChanged || balanceChanged
     }
 
@@ -83,51 +79,28 @@ struct EditAccountSheet: View {
                                 .autocorrectionDisabled()
                         }
 
-                        // Balance (editable for manual, read-only for Plaid)
+                        // Balance
                         VStack(alignment: .leading, spacing: 6) {
+                            Text(accountType.isCreditCard ? "Balance Owed" : "Current Balance")
+                                .font(.appCaption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Color.textSecondary)
+                                .textCase(.uppercase)
+                                .tracking(0.5)
+
                             HStack {
-                                Text(accountType.isCreditCard ? "Balance Owed" : "Current Balance")
-                                    .font(.appCaption)
+                                Text("$")
+                                    .font(.appTitle)
                                     .fontWeight(.semibold)
                                     .foregroundStyle(Color.textSecondary)
-                                    .textCase(.uppercase)
-                                    .tracking(0.5)
 
-                                if !isManual {
-                                    Text("· Plaid Managed")
-                                        .font(.appCaption)
-                                        .foregroundStyle(Color.accentCyan)
-                                }
+                                TextField("0.00", text: $balanceText)
+                                    .textFieldStyle(.plain)
+                                    .keyboardType(.decimalPad)
+                                    .font(.appTitle)
+                                    .focused($isBalanceFocused)
                             }
-
-                            if isManual {
-                                HStack {
-                                    Text("$")
-                                        .font(.appTitle)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(Color.textSecondary)
-
-                                    TextField("0.00", text: $balanceText)
-                                        .textFieldStyle(.plain)
-                                        .keyboardType(.decimalPad)
-                                        .font(.appTitle)
-                                        .focused($isBalanceFocused)
-                                }
-                                .formFieldBackground()
-                            } else {
-                                HStack {
-                                    Text(account.currentBalance.asCurrency())
-                                        .font(.appTitle)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(Color.textSecondary)
-                                    Spacer()
-                                }
-                                .padding(AppDesign.paddingSm + 4)
-                                .background(
-                                    RoundedRectangle(cornerRadius: AppDesign.cornerRadiusMd)
-                                        .fill(Color(.secondarySystemGroupedBackground))
-                                )
-                            }
+                            .formFieldBackground()
                         }
 
                         // Info about account type (read-only)
@@ -150,19 +123,6 @@ struct EditAccountSheet: View {
                         )
                     }
                     .padding(.horizontal, AppDesign.paddingLg)
-
-                    // Note for Plaid accounts
-                    if !isManual {
-                        HStack(spacing: 8) {
-                            Image(systemName: "info.circle.fill")
-                                .foregroundStyle(Color.accentCyan)
-                                .font(.appCaption)
-                            Text("Balance is synced from your bank via Plaid and cannot be edited directly.")
-                                .font(.appCaption)
-                                .foregroundStyle(Color.textSecondary)
-                        }
-                        .padding(.horizontal, AppDesign.paddingLg)
-                    }
 
                     // Save Button
                     Button {
@@ -211,7 +171,7 @@ struct EditAccountSheet: View {
     // MARK: - Actions
 
     private func saveChanges() async {
-        let balance = isManual ? (parsedBalance ?? account.currentBalance) : account.currentBalance
+        let balance = parsedBalance ?? account.currentBalance
         isSubmitting = true
 
         let success = await accountService.updateAccount(

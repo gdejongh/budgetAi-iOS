@@ -26,7 +26,8 @@ nonisolated final class KeychainManager: Sendable {
 
     // MARK: - Save
 
-    func save(_ value: String, for key: Key) {
+    @discardableResult
+    func save(_ value: String, for key: Key) -> Bool {
         let data = Data(value.utf8)
 
         // Delete any existing item first
@@ -40,7 +41,15 @@ nonisolated final class KeychainManager: Sendable {
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]
 
-        SecItemAdd(query as CFDictionary, nil)
+        let status = SecItemAdd(query as CFDictionary, nil)
+
+        if status != errSecSuccess {
+            // Retry once — handles rare Keychain contention or timing issues
+            delete(key)
+            let retryStatus = SecItemAdd(query as CFDictionary, nil)
+            return retryStatus == errSecSuccess
+        }
+        return true
     }
 
     // MARK: - Retrieve

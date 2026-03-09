@@ -45,6 +45,32 @@ final class AuthService {
                     service.handleAuthFailure()
                 }
             }
+
+            // Proactively refresh the access token on launch so stale tokens
+            // don't cause 401 → refresh → failure cascades.
+            if service.isAuthenticated {
+                await service.silentTokenRefresh()
+            }
+        }
+    }
+
+    // MARK: - Silent Token Refresh
+
+    /// Proactively refreshes the access token on app launch.
+    /// If the refresh token is still valid, this ensures API calls
+    /// use a fresh access token without relying on 401 recovery.
+    private func silentTokenRefresh() async {
+        do {
+            let response: AuthResponse = try await api.request(
+                .post,
+                path: "/api/auth/refresh",
+                body: RefreshRequest(refreshToken: keychain.get(.refreshToken) ?? ""),
+                authenticated: false
+            )
+            keychain.saveAuthResponse(response)
+        } catch {
+            // Refresh token is invalid or expired — session cannot be restored
+            handleAuthFailure()
         }
     }
 
