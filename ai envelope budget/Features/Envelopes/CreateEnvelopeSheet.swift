@@ -27,12 +27,9 @@ struct CreateEnvelopeSheet: View {
     }
 
     private var parsedAllocation: Decimal? {
-        let cleaned = allocationText
-            .replacingOccurrences(of: "$", with: "")
-            .replacingOccurrences(of: ",", with: "")
-            .trimmingCharacters(in: .whitespaces)
-        if cleaned.isEmpty { return Decimal.zero }
-        return Decimal(string: cleaned)
+        let trimmed = allocationText.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return Decimal.zero }
+        return evaluateMathExpression(trimmed)
     }
 
     private var isValid: Bool {
@@ -156,9 +153,14 @@ struct CreateEnvelopeSheet: View {
 
                                 TextField("0.00", text: $allocationText)
                                     .textFieldStyle(.plain)
-                                    .keyboardType(.decimalPad)
+                                    .keyboardType(.numbersAndPunctuation)
                                     .focused($isAllocationFocused)
                                     .font(.appTitle)
+                                    .toolbar {
+                                        ToolbarItemGroup(placement: .keyboard) {
+                                            MathOperatorButtons(text: $allocationText)
+                                        }
+                                    }
                             }
                             .formFieldBackground()
                         }

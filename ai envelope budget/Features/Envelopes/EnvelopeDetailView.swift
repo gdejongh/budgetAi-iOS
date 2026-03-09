@@ -162,13 +162,13 @@ struct EnvelopeDetailView: View {
         }
         .alert("Edit Allocation", isPresented: $showEditAllocation) {
             TextField("Amount", text: $editedAllocation)
-                .keyboardType(.decimalPad)
+                .keyboardType(.numbersAndPunctuation)
             Button("Save") {
                 Task { await saveAllocation() }
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Set the budget for \(envelopeService.viewedMonthString).")
+            Text("Set the budget for \(envelopeService.viewedMonthString). Tip: use +, \u{2212}, \u{00d7}, \u{00f7} for quick math.")
         }
         .confirmationDialog(
             "Delete Envelope",
@@ -559,11 +559,7 @@ struct EnvelopeDetailView: View {
 
     private func saveAllocation() async {
         guard let envelope else { return }
-        let cleaned = editedAllocation
-            .replacingOccurrences(of: "$", with: "")
-            .replacingOccurrences(of: ",", with: "")
-            .trimmingCharacters(in: .whitespaces)
-        guard let amount = Decimal(string: cleaned), amount >= 0 else { return }
+        guard let amount = evaluateMathExpression(editedAllocation), amount >= 0 else { return }
         isSaving = true
         _ = await envelopeService.setAllocation(for: envelope, amount: amount)
         isSaving = false

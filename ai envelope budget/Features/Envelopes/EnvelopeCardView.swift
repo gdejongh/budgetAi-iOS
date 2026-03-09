@@ -128,10 +128,15 @@ struct EnvelopeCardView: View {
                                 .foregroundStyle(Color.textSecondary)
                             TextField("0", text: $editedAllocation)
                                 .font(.appNumber())
-                                .keyboardType(.decimalPad)
+                                .keyboardType(.numbersAndPunctuation)
                                 .multilineTextAlignment(.trailing)
                                 .focused(allocationFocused)
                                 .frame(width: 80)
+                                .toolbar {
+                                    ToolbarItemGroup(placement: .keyboard) {
+                                        MathOperatorButtons(text: $editedAllocation)
+                                    }
+                                }
                         }
                         Text("budget")
                             .font(.appLabel)

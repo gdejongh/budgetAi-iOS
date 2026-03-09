@@ -257,12 +257,8 @@ struct EnvelopesView: View {
             editingEnvelopeId = nil
             return
         }
-        let cleaned = editedAllocation
-            .replacingOccurrences(of: "$", with: "")
-            .replacingOccurrences(of: ",", with: "")
-            .trimmingCharacters(in: .whitespaces)
         editingEnvelopeId = nil
-        guard let amount = Decimal(string: cleaned), amount >= 0 else { return }
+        guard let amount = evaluateMathExpression(editedAllocation), amount >= 0 else { return }
         _ = await envelopeService.setAllocation(for: envelope, amount: amount)
     }
 
