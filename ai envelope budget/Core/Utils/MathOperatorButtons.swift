@@ -6,7 +6,7 @@ struct MathOperatorButtons: View {
     @Binding var text: String
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             operatorButton("+", operator: "+")
             operatorButton("−", operator: "-")
             operatorButton("×", operator: "*")
@@ -20,11 +20,15 @@ struct MathOperatorButtons: View {
             text.append(op)
         } label: {
             Text(label)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .frame(width: 40, height: 36)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .frame(width: 44, height: 40)
                 .background(Color.accentCyan.opacity(0.15))
                 .foregroundStyle(Color.accentCyan)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.accentCyan.opacity(0.3), lineWidth: 1)
+                )
         }
         .buttonStyle(.plain)
     }

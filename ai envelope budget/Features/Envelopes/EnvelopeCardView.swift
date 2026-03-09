@@ -14,7 +14,6 @@ struct EnvelopeCardView: View {
     let remaining: Decimal
     var isEditing: Bool = false
     @Binding var editedAllocation: String
-    var allocationFocused: FocusState<Bool>.Binding
 
     // CC Payment specific
     var cardBalance: Decimal? = nil
@@ -126,18 +125,21 @@ struct EnvelopeCardView: View {
                             Text("$")
                                 .font(.appNumber())
                                 .foregroundStyle(Color.textSecondary)
-                            TextField("0", text: $editedAllocation)
+                            Text(editedAllocation.isEmpty ? "0" : editedAllocation)
                                 .font(.appNumber())
-                                .keyboardType(.numbersAndPunctuation)
-                                .multilineTextAlignment(.trailing)
-                                .focused(allocationFocused)
-                                .frame(width: 80)
-                                .toolbar {
-                                    ToolbarItemGroup(placement: .keyboard) {
-                                        MathOperatorButtons(text: $editedAllocation)
-                                    }
-                                }
+                                .foregroundStyle(Color.textPrimary)
+                                .frame(minWidth: 40, alignment: .trailing)
                         }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.accentCyan.opacity(0.08))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .strokeBorder(Color.accentCyan.opacity(0.4), lineWidth: 1)
+                                )
+                        )
                         Text("budget")
                             .font(.appLabel)
                             .foregroundStyle(Color.accentCyan)
@@ -167,6 +169,34 @@ struct EnvelopeCardView: View {
 
             // Row 2 — Progress bar
             BrandProgressBar(value: progress, tint: progressTint)
+
+            // Row 2.5 — Math operator buttons (visible when editing)
+            if isEditing {
+                HStack(spacing: 8) {
+                    Spacer()
+                    ForEach(
+                        [("+", "+"), ("−", "-"), ("×", "*"), ("÷", "/")],
+                        id: \.0
+                    ) { label, op in
+                        Button {
+                            editedAllocation.append(op)
+                        } label: {
+                            Text(label)
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .frame(width: 38, height: 34)
+                                .background(Color.accentCyan.opacity(0.15))
+                                .foregroundStyle(Color.accentCyan)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .strokeBorder(Color.accentCyan.opacity(0.3), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
 
             // Row 3 — Context: spent/goal info + goal type badge
             HStack {

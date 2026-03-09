@@ -23,6 +23,7 @@ struct EnvelopeDetailView: View {
     @State private var editedAllocation = ""
     @State private var isDeleting = false
     @State private var isSaving = false
+    @FocusState private var allocationFieldFocused: Bool
 
     private var envelope: EnvelopeResponse? {
         envelopeService.envelopes.first { $0.id == envelopeId }
@@ -160,15 +161,18 @@ struct EnvelopeDetailView: View {
         } message: {
             Text("Enter a new name for this envelope.")
         }
-        .alert("Edit Allocation", isPresented: $showEditAllocation) {
-            TextField("Amount", text: $editedAllocation)
-                .keyboardType(.numbersAndPunctuation)
-            Button("Save") {
-                Task { await saveAllocation() }
+        .sheet(isPresented: $showEditAllocation) {
+            EditAllocationSheet(
+                title: "Edit Allocation",
+                subtitle: "Set the budget for \(envelopeService.viewedMonthString)",
+                text: $editedAllocation,
+                isSaving: isSaving
+            ) {
+                await saveAllocation()
+                showEditAllocation = false
             }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Set the budget for \(envelopeService.viewedMonthString). Tip: use +, \u{2212}, \u{00d7}, \u{00f7} for quick math.")
+            .presentationDetents([.height(260)])
+            .presentationDragIndicator(.visible)
         }
         .confirmationDialog(
             "Delete Envelope",

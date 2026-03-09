@@ -79,17 +79,18 @@ nonisolated struct TransactionResponse: Codable, Sendable, Identifiable {
         resolvedType.isEditable
     }
 
-    /// Primary display text — merchantName or description
+    /// Primary display text — merchantName for purchases, description for transfers/CC payments
     var displayTitle: String {
-        if let merchant = merchantName, !merchant.isEmpty {
+        if resolvedType == .standard, let merchant = merchantName, !merchant.isEmpty {
             return merchant
         }
         return description ?? "Transaction"
     }
 
-    /// Secondary display text — description if different from merchant
+    /// Secondary display text — description if different from merchant (purchases only)
     var displaySubtitle: String? {
-        guard let desc = description, !desc.isEmpty,
+        guard resolvedType == .standard,
+              let desc = description, !desc.isEmpty,
               let merchant = merchantName, !merchant.isEmpty,
               desc != merchant else { return nil }
         return desc

@@ -26,7 +26,7 @@ struct CreateTransactionSheet: View {
     @State private var selectedEnvelopeId = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
-    @FocusState private var isAmountFocused: Bool
+    @State private var isAmountEditing = false
 
     private var selectedAccount: BankAccountResponse? {
         accountService.accounts.first { $0.id == selectedAccountId }
@@ -46,7 +46,7 @@ struct CreateTransactionSheet: View {
     private var isValid: Bool {
         !selectedAccountId.isEmpty &&
         !amount.isEmpty &&
-        (Decimal(string: amount) ?? 0) > 0
+        (evaluateMathExpression(amount).map { $0 > 0 } ?? false)
     }
 
     var body: some View {
@@ -84,13 +84,20 @@ struct CreateTransactionSheet: View {
                             HStack {
                                 Text("$")
                                     .foregroundStyle(Color.textSecondary)
-                                TextField("0.00", text: $amount)
-                                    .keyboardType(.decimalPad)
-                                    .focused($isAmountFocused)
-                                    .textFieldStyle(.plain)
-                                    .foregroundStyle(Color.textPrimary)
+                                Text(amount.isEmpty ? "0.00" : amount)
+                                    .foregroundStyle(amount.isEmpty ? Color.textMuted : Color.textPrimary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                        isAmountEditing = true
+                                    }
                             }
                         }
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.accentCyan, lineWidth: isAmountEditing ? 2 : 0)
+                        )
 
                         // Description
                         formSection("Description (optional)") {
@@ -150,6 +157,7 @@ struct CreateTransactionSheet: View {
                     }
                     .padding(AppDesign.paddingLg)
             }
+            .calculatorKeypadInput(text: $amount, isEditing: $isAmountEditing)
             .navigationTitle("New Transaction")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -157,7 +165,7 @@ struct CreateTransactionSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 KeyboardDoneToolbar {
-                    isAmountFocused = false
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
             }
             .onAppear {
@@ -228,7 +236,7 @@ struct CreateTransactionSheet: View {
     // MARK: - Save
 
     private func save() async {
-        guard let decimalAmount = Decimal(string: amount), decimalAmount > 0 else { return }
+        guard let decimalAmount = evaluateMathExpression(amount), decimalAmount > 0 else { return }
         isSaving = true
         errorMessage = nil
 

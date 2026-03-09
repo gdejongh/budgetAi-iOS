@@ -18,8 +18,7 @@ struct EditAccountSheet: View {
     @State private var isSubmitting = false
     @State private var showError = false
     @State private var errorMessage = ""
-
-    @FocusState private var isBalanceFocused: Bool
+    @State private var isAmountEditing = false
 
     init(account: BankAccountResponse) {
         self.account = account
@@ -41,12 +40,9 @@ struct EditAccountSheet: View {
     }
 
     private var parsedBalance: Decimal? {
-        let cleaned = balanceText
-            .replacingOccurrences(of: "$", with: "")
-            .replacingOccurrences(of: ",", with: "")
-            .trimmingCharacters(in: .whitespaces)
-        if cleaned.isEmpty { return Decimal.zero }
-        return Decimal(string: cleaned)
+        let trimmed = balanceText.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return Decimal.zero }
+        return evaluateMathExpression(trimmed)
     }
 
     private var accountType: AccountType {
@@ -94,13 +90,21 @@ struct EditAccountSheet: View {
                                     .fontWeight(.semibold)
                                     .foregroundStyle(Color.textSecondary)
 
-                                TextField("0.00", text: $balanceText)
-                                    .textFieldStyle(.plain)
-                                    .keyboardType(.decimalPad)
+                                Text(balanceText.isEmpty ? "0.00" : balanceText)
                                     .font(.appTitle)
-                                    .focused($isBalanceFocused)
+                                    .foregroundStyle(balanceText.isEmpty ? Color.textMuted : Color.textPrimary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                        isAmountEditing = true
+                                    }
                             }
                             .formFieldBackground()
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.accentCyan, lineWidth: isAmountEditing ? 2 : 0)
+                            )
                         }
 
                         // Info about account type (read-only)
@@ -146,6 +150,7 @@ struct EditAccountSheet: View {
                     .padding(.top, AppDesign.paddingSm)
                 }
             }
+            .calculatorKeypadInput(text: $balanceText, isEditing: $isAmountEditing)
             .navigationTitle("Edit Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -155,7 +160,7 @@ struct EditAccountSheet: View {
                     }
                 }
                 KeyboardDoneToolbar {
-                    isBalanceFocused = false
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
             }
             .alert("Error", isPresented: $showError) {

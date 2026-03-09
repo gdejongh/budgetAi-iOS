@@ -13,108 +13,74 @@ struct TransactionCardView: View {
     let envelopeName: String?
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Icon
-            iconView
+        VStack(spacing: 6) {
+            // Row 1: Merchant + Amount
+            HStack {
+                Text(transaction.displayTitle)
+                    .font(.appBody)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color.textPrimary)
+                    .lineLimit(1)
 
-            // Details
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(transaction.displayTitle)
-                        .font(.appSubheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Color.textPrimary)
-                        .lineLimit(1)
-
-                    if transaction.resolvedType != .standard {
-                        BadgeView(text: transaction.resolvedType.displayName, color: badgeColor)
-                    }
-
-                    if transaction.pending == true {
-                        BadgeView(text: "PENDING", color: .warning)
-                    }
+                if transaction.pending == true {
+                    BadgeView(text: "PENDING", color: .warning)
                 }
 
-                HStack(spacing: 6) {
-                    if let acctName = accountName {
-                        Text(acctName)
-                            .font(.caption2)
-                            .foregroundStyle(Color.textMuted)
-                    }
+                Spacer()
 
-                    if accountName != nil && envelopeName != nil {
-                        Circle()
-                            .fill(Color.textMuted)
-                            .frame(width: 3, height: 3)
-                    }
-
-                    if let envName = envelopeName {
-                        Text(envName)
-                            .font(.caption2)
-                            .foregroundStyle(Color.accentViolet.opacity(0.8))
-                    }
-                }
-
-                if let subtitle = transaction.displaySubtitle {
-                    Text(subtitle)
-                        .font(.caption2)
-                        .foregroundStyle(Color.textMuted)
-                        .lineLimit(1)
-                }
-            }
-
-            Spacer()
-
-            // Amount + Date
-            VStack(alignment: .trailing, spacing: 3) {
                 Text(formatAmount(transaction.amount))
                     .font(.appNumber(.subheadline))
-                    .foregroundStyle(transaction.isIncome ? Color.success : Color.danger)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(transaction.isIncome ? Color.success : Color.textPrimary)
+            }
 
-                Text(transaction.formattedDate)
-                    .font(.appLabel)
-                    .foregroundStyle(Color.textMuted)
+            // Row 2: Envelope badge + Account name
+            HStack(spacing: 6) {
+                if let envName = envelopeName {
+                    BadgeView(
+                        text: envName,
+                        color: .accentViolet,
+                        icon: "envelope.fill"
+                    )
+                } else if transaction.resolvedType != .standard {
+                    BadgeView(
+                        text: transaction.resolvedType.displayName,
+                        color: badgeColor,
+                        icon: transaction.resolvedType.icon
+                    )
+                } else {
+                    BadgeView(
+                        text: "Uncategorized",
+                        color: .textMuted,
+                        icon: "questionmark.circle"
+                    )
+                }
+
+                Spacer()
+
+                if let acctName = accountName {
+                    Text(acctName)
+                        .font(.caption)
+                        .foregroundStyle(Color.textSecondary)
+                }
+            }
+
+            // Row 3: Description / subtitle (if different from merchant)
+            if let subtitle = transaction.displaySubtitle {
+                HStack {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Color.textMuted)
+                        .lineLimit(1)
+                    Spacer()
+                }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
         .contentShape(Rectangle())
     }
 
-    // MARK: - Icon View
-
-    private var iconView: some View {
-        ZStack {
-            Circle()
-                .fill(iconBackground)
-                .frame(width: 36, height: 36)
-
-            Image(systemName: iconName)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(iconColor)
-        }
-    }
-
-    private var iconName: String {
-        switch transaction.resolvedType {
-        case .ccPayment: return "creditcard.fill"
-        case .transfer: return "arrow.triangle.swap"
-        case .standard:
-            return transaction.isIncome ? "arrow.down.left" : "arrow.up.right"
-        }
-    }
-
-    private var iconColor: Color {
-        switch transaction.resolvedType {
-        case .ccPayment: return .accentViolet
-        case .transfer: return .accentCyan
-        case .standard:
-            return transaction.isIncome ? .success : .danger
-        }
-    }
-
-    private var iconBackground: Color {
-        iconColor.opacity(0.12)
-    }
+    // MARK: - Helpers
 
     private var badgeColor: Color {
         switch transaction.resolvedType {
@@ -124,8 +90,6 @@ struct TransactionCardView: View {
         }
     }
 
-    // MARK: - Helpers
-
     private func formatAmount(_ amount: Decimal) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -133,35 +97,47 @@ struct TransactionCardView: View {
         formatter.minimumFractionDigits = 2
         formatter.maximumFractionDigits = 2
         formatter.positivePrefix = "+$"
-        formatter.negativePrefix = "-$"
+        formatter.negativePrefix = "−$"
         return formatter.string(from: amount as NSDecimalNumber) ?? "$0.00"
     }
 }
 
 #Preview {
-    VStack(spacing: 12) {
-        TransactionCardView(
-            transaction: TransactionResponse(
-                id: "1", appUserId: "u1", bankAccountId: "a1", envelopeId: "e1",
-                amount: -42.50, description: "Weekly groceries", transactionDate: "2026-03-01",
-                transactionType: "STANDARD", linkedTransactionId: nil, createdAt: nil,
-                pending: false, merchantName: "Whole Foods", plaidCategory: nil, plaidTransactionId: nil
-            ),
-            accountName: "Chase Checking",
-            envelopeName: "Groceries"
-        )
+    List {
+        Section("March 9, 2026") {
+            TransactionCardView(
+                transaction: TransactionResponse(
+                    id: "1", appUserId: "u1", bankAccountId: "a1", envelopeId: "e1",
+                    amount: -42.50, description: "Weekly groceries", transactionDate: "2026-03-09",
+                    transactionType: "STANDARD", linkedTransactionId: nil, createdAt: nil,
+                    pending: false, merchantName: "Whole Foods", plaidCategory: nil, plaidTransactionId: nil
+                ),
+                accountName: "Chase Checking",
+                envelopeName: "Groceries"
+            )
 
-        TransactionCardView(
-            transaction: TransactionResponse(
-                id: "2", appUserId: "u1", bankAccountId: "a1", envelopeId: nil,
-                amount: 3200.00, description: "Paycheck", transactionDate: "2026-03-01",
-                transactionType: "STANDARD", linkedTransactionId: nil, createdAt: nil,
-                pending: false, merchantName: "Employer Inc", plaidCategory: nil, plaidTransactionId: nil
-            ),
-            accountName: "Chase Checking",
-            envelopeName: nil
-        )
+            TransactionCardView(
+                transaction: TransactionResponse(
+                    id: "2", appUserId: "u1", bankAccountId: "a1", envelopeId: nil,
+                    amount: 3200.00, description: "Paycheck", transactionDate: "2026-03-09",
+                    transactionType: "STANDARD", linkedTransactionId: nil, createdAt: nil,
+                    pending: false, merchantName: "Employer Inc", plaidCategory: nil, plaidTransactionId: nil
+                ),
+                accountName: "Chase Checking",
+                envelopeName: nil
+            )
+
+            TransactionCardView(
+                transaction: TransactionResponse(
+                    id: "3", appUserId: "u1", bankAccountId: "a2", envelopeId: nil,
+                    amount: -15000.00, description: nil, transactionDate: "2026-03-09",
+                    transactionType: "TRANSFER", linkedTransactionId: "4", createdAt: nil,
+                    pending: false, merchantName: "Transfer to Savings", plaidCategory: nil, plaidTransactionId: nil
+                ),
+                accountName: "Wealthfront",
+                envelopeName: nil
+            )
+        }
     }
-    .padding()
-    .background(Color.bgPrimary)
+    .brandListStyle()
 }

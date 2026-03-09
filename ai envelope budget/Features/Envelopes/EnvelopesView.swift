@@ -19,7 +19,6 @@ struct EnvelopesView: View {
     @State private var editingEnvelopeId: String?
     @State private var editedAllocation = ""
     @State private var detailEnvelopeId: String?
-    @FocusState private var allocationFieldFocused: Bool
     @State private var hasAppeared = false
     @State private var collapsedCategoryIds: Set<String> = {
         let saved = UserDefaults.standard.stringArray(forKey: "collapsedCategoryIds") ?? []
@@ -110,11 +109,6 @@ struct EnvelopesView: View {
         .navigationDestination(item: $detailEnvelopeId) { envelopeId in
             EnvelopeDetailView(envelopeId: envelopeId)
         }
-        .onChange(of: allocationFieldFocused) { _, focused in
-            if !focused, editingEnvelopeId != nil {
-                Task { await saveInlineAllocation() }
-            }
-        }
         .refreshable {
             await envelopeService.loadAll()
         }
@@ -191,11 +185,21 @@ struct EnvelopesView: View {
         }
         .brandListStyle()
         .onAppear { hasAppeared = true }
-        .toolbar {
-            KeyboardDoneToolbar {
-                allocationFieldFocused = false
+        .safeAreaInset(edge: .bottom) {
+            if editingEnvelopeId != nil {
+                CalculatorKeypad(
+                    text: $editedAllocation,
+                    onDone: {
+                        Task { await saveInlineAllocation() }
+                    },
+                    onCancel: {
+                        editingEnvelopeId = nil
+                    }
+                )
+                .transition(.move(edge: .bottom))
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: editingEnvelopeId != nil)
     }
 
     // MARK: - Month Navigator
@@ -348,7 +352,6 @@ struct EnvelopesView: View {
                             : envelopeService.remaining(for: envelope),
                         isEditing: editingEnvelopeId == envelope.id,
                         editedAllocation: $editedAllocation,
-                        allocationFocused: $allocationFieldFocused,
                         cardBalance: envelope.isCCPayment
                             ? envelopeService.cardBalance(for: envelope, accounts: accountService.accounts)
                             : nil,
@@ -360,7 +363,7 @@ struct EnvelopesView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         if editingEnvelopeId == envelope.id {
-                            // Already editing — do nothing, let focus handle it
+                            // Already editing — do nothing
                         } else {
                             // Commit any pending edit first
                             if editingEnvelopeId != nil {
@@ -368,7 +371,6 @@ struct EnvelopesView: View {
                             }
                             editedAllocation = "\(envelopeService.monthlyAllocation(for: envelope))"
                             editingEnvelopeId = envelope.id
-                            allocationFieldFocused = true
                         }
                     }
                     .swipeActions(edge: .trailing) {

@@ -23,14 +23,14 @@ struct TransferSheet: View {
     @State private var transactionDate = Date()
     @State private var isSaving = false
     @State private var errorMessage: String?
-    @FocusState private var isAmountFocused: Bool
+    @State private var isAmountEditing = false
 
     private var isValid: Bool {
         !sourceAccountId.isEmpty &&
         !destinationAccountId.isEmpty &&
         sourceAccountId != destinationAccountId &&
         !amount.isEmpty &&
-        (Decimal(string: amount) ?? 0) > 0
+        (evaluateMathExpression(amount).map { $0 > 0 } ?? false)
     }
 
     var body: some View {
@@ -97,13 +97,20 @@ struct TransferSheet: View {
                             HStack {
                                 Text("$")
                                     .foregroundStyle(Color.textSecondary)
-                                TextField("0.00", text: $amount)
-                                    .keyboardType(.decimalPad)
-                                    .focused($isAmountFocused)
-                                    .textFieldStyle(.plain)
-                                    .foregroundStyle(Color.textPrimary)
+                                Text(amount.isEmpty ? "0.00" : amount)
+                                    .foregroundStyle(amount.isEmpty ? Color.textMuted : Color.textPrimary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                        isAmountEditing = true
+                                    }
                             }
                         }
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.accentCyan, lineWidth: isAmountEditing ? 2 : 0)
+                        )
 
                         // Description
                         formSection("Description (optional)") {
@@ -164,6 +171,7 @@ struct TransferSheet: View {
                     }
                     .padding(AppDesign.paddingLg)
             }
+            .calculatorKeypadInput(text: $amount, isEditing: $isAmountEditing)
             .navigationTitle("Transfer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -171,7 +179,7 @@ struct TransferSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 KeyboardDoneToolbar {
-                    isAmountFocused = false
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
             }
             .onAppear {
@@ -200,7 +208,7 @@ struct TransferSheet: View {
     // MARK: - Save
 
     private func save() async {
-        guard let decimalAmount = Decimal(string: amount), decimalAmount > 0 else { return }
+        guard let decimalAmount = evaluateMathExpression(amount), decimalAmount > 0 else { return }
         isSaving = true
         errorMessage = nil
 

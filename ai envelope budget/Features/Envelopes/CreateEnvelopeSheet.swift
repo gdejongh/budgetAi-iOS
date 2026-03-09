@@ -153,7 +153,7 @@ struct CreateEnvelopeSheet: View {
 
                                 TextField("0.00", text: $allocationText)
                                     .textFieldStyle(.plain)
-                                    .keyboardType(.numbersAndPunctuation)
+                                    .keyboardType(.decimalPad)
                                     .focused($isAllocationFocused)
                                     .font(.appTitle)
                                     .toolbar {

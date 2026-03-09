@@ -175,6 +175,29 @@ struct TransactionsView: View {
         )
     }
 
+    /// Group transactions by date, returning ordered sections
+    private func groupedByDate(_ transactions: [TransactionResponse]) -> [(key: String, display: String, transactions: [TransactionResponse])] {
+        let grouped = Dictionary(grouping: transactions) { txn in
+            txn.transactionDate ?? ""
+        }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateFormat = "MMMM d, yyyy"
+
+        return grouped.keys.sorted(by: >).map { key in
+            let display: String
+            if let date = dateFormatter.date(from: key) {
+                display = displayFormatter.string(from: date)
+            } else {
+                display = key
+            }
+            return (key: key, display: display, transactions: grouped[key] ?? [])
+        }
+    }
+
     // MARK: - Transactions List
 
     private var transactionsList: some View {
@@ -222,37 +245,45 @@ struct TransactionsView: View {
                 .listRowBackground(Color.clear)
             }
 
-            // Transactions
+            // Transactions grouped by date
             let displayed = transactionService.displayTransactions
             if displayed.isEmpty {
                 ContentUnavailableView.search
             } else {
-                Section {
-                    ForEach(displayed) { txn in
-                        Button {
-                            editTransaction = txn
-                        } label: {
-                            TransactionCardView(
-                                transaction: txn,
-                                accountName: txn.bankAccountId.flatMap { accountMap[$0] },
-                                envelopeName: txn.envelopeId.flatMap { envelopeMap[$0] }
-                            )
-                        }
-                        .buttonStyle(HighlightButtonStyle())
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
-                                deleteTransaction = txn
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-
+                let sections = groupedByDate(displayed)
+                ForEach(sections, id: \.key) { section in
+                    Section {
+                        ForEach(section.transactions) { txn in
                             Button {
                                 editTransaction = txn
                             } label: {
-                                Label("Edit", systemImage: "pencil")
+                                TransactionCardView(
+                                    transaction: txn,
+                                    accountName: txn.bankAccountId.flatMap { accountMap[$0] },
+                                    envelopeName: txn.envelopeId.flatMap { envelopeMap[$0] }
+                                )
                             }
-                            .tint(.warning)
+                            .buttonStyle(HighlightButtonStyle())
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    deleteTransaction = txn
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+
+                                Button {
+                                    editTransaction = txn
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(.warning)
+                            }
                         }
+                    } header: {
+                        Text(section.display)
+                            .font(.appSubheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Color.textPrimary)
                     }
                 }
             }
