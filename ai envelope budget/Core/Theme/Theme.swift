@@ -267,10 +267,10 @@ extension View {
 // MARK: - Brand List Styling
 
 extension View {
-    /// Themed inset grouped list — native iOS styling
+    /// Themed full-width plain list — edge-to-edge sections
     func brandListStyle() -> some View {
         self
-            .listStyle(.insetGrouped)
+            .listStyle(.plain)
     }
 
     /// Themed section row background for lists

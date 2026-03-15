@@ -56,6 +56,8 @@ struct TransactionsView: View {
         }
         .navigationTitle("Transactions")
         .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(Color(UIColor.systemBackground), for: .navigationBar)
+        .toolbarBackgroundVisibility(.visible, for: .navigationBar)
         .searchable(text: searchTextBinding, prompt: "Search transactions")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -202,38 +204,6 @@ struct TransactionsView: View {
 
     private var transactionsList: some View {
         List {
-            // Summary
-            Section {
-                HStack(spacing: AppDesign.paddingLg) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(transactionService.totalIncome.asCurrency())
-                            .font(.appBody)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Color.success)
-                        Text("Income")
-                            .font(.appCaption)
-                            .foregroundStyle(Color.textSecondary)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(transactionService.totalExpenses.asCurrency())
-                            .font(.appBody)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Color.danger)
-                        Text("Expenses")
-                            .font(.appCaption)
-                            .foregroundStyle(Color.textSecondary)
-                    }
-
-                    Spacer()
-
-                    Text("\(transactionService.displayTransactions.count) txns")
-                        .font(.appCaption)
-                        .foregroundStyle(Color.textMuted)
-                }
-            }
-            .staggeredFadeIn(index: 0, isVisible: hasAppeared)
-
             // Error banner
             if let error = transactionService.errorMessage {
                 Section {
@@ -280,16 +250,26 @@ struct TransactionsView: View {
                             }
                         }
                     } header: {
-                        Text(section.display)
-                            .font(.appSubheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Color.textPrimary)
+                        dateSeparator(section.display)
                     }
                 }
             }
         }
-        .brandListStyle()
+        .listStyle(.plain)
         .onAppear { hasAppeared = true }
+    }
+
+    // MARK: - Date Separator
+
+    private func dateSeparator(_ dateString: String) -> some View {
+        Text(dateString)
+            .font(.appCaption)
+            .fontWeight(.semibold)
+            .foregroundStyle(Color.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 8)
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+            .background(Color(UIColor.systemBackground))
     }
 }
 

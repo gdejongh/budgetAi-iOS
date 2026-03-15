@@ -12,6 +12,7 @@ struct EnvelopesView: View {
     @Environment(AccountService.self) private var accountService
     @Environment(TransactionService.self) private var transactionService
 
+    @State private var showFixOverAllocation = false
     @State private var showCreateCategory = false
     @State private var showCreateEnvelope = false
     @State private var createEnvelopeCategoryId: String?
@@ -87,6 +88,9 @@ struct EnvelopesView: View {
         .sheet(isPresented: $showCreateEnvelope) {
             CreateEnvelopeSheet(preselectedCategoryId: createEnvelopeCategoryId)
         }
+        .sheet(isPresented: $showFixOverAllocation) {
+            FixOverAllocationSheet()
+        }
         .confirmationDialog(
             "Delete Category",
             isPresented: Binding(
@@ -124,43 +128,23 @@ struct EnvelopesView: View {
             // Month Navigator
             Section {
                 monthNavigator
+                    .listRowInsets(EdgeInsets())
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity)
+                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
             }
-
-            // Summary
-            Section {
-                VStack(spacing: 12) {
-                    Text(envelopeService.totalRemaining.asCurrency())
-                        .font(.appStatLarge)
-                        .foregroundStyle(envelopeService.totalRemaining >= 0 ? Color.textPrimary : Color.danger)
-
-                    Text("remaining to spend")
-                        .font(.appCaption)
-                        .foregroundStyle(Color.textSecondary)
-
-                    if envelopeService.totalMonthlyAllocated > 0 {
-                        BrandProgressBar(value: overallProgress, tint: overallProgressTint)
-                    }
-
-                    HStack(spacing: AppDesign.paddingLg) {
-                        summaryItem(
-                            label: "Spent",
-                            value: envelopeService.totalMonthlySpent.asCurrency()
-                        )
-                        summaryItem(
-                            label: "Budgeted",
-                            value: envelopeService.totalMonthlyAllocated.asCurrency()
-                        )
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 4)
-            }
-            .staggeredFadeIn(index: 0, isVisible: hasAppeared)
 
             // Unallocated Banner
-            if !envelopeService.envelopes.isEmpty {
+            let unallocatedValue = envelopeService.unallocatedAmount(
+                accounts: accountService.accounts,
+                transactions: transactionService.transactions
+            )
+            if !envelopeService.envelopes.isEmpty && unallocatedValue != 0 {
                 Section {
                     unallocatedBanner
+                        .listRowInsets(EdgeInsets())
+                        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                 }
                 .staggeredFadeIn(index: 1, isVisible: hasAppeared)
             }
@@ -212,6 +196,7 @@ struct EnvelopesView: View {
                 Image(systemName: "chevron.left")
                     .foregroundStyle(Color.accentCyan)
             }
+            .buttonStyle(.borderless)
 
             Spacer()
 
@@ -227,6 +212,7 @@ struct EnvelopesView: View {
                 Image(systemName: "chevron.right")
                     .foregroundStyle(Color.accentCyan)
             }
+            .buttonStyle(.borderless)
         }
     }
 
@@ -274,6 +260,8 @@ struct EnvelopesView: View {
 
     // MARK: - Unallocated Banner
 
+    @State private var fixButtonPulse = false
+
     private var unallocatedBanner: some View {
         let unallocated = envelopeService.unallocatedAmount(
             accounts: accountService.accounts,
@@ -282,29 +270,46 @@ struct EnvelopesView: View {
         let color: Color = unallocated > 0 ? .warning : unallocated < 0 ? .danger : .success
 
         return VStack(spacing: 8) {
-            Text("Unallocated")
-                .font(.appCaption)
-                .foregroundStyle(Color.textSecondary)
-
-            Text(unallocated.asCurrency())
-                .font(.appStatLarge)
-                .foregroundStyle(color)
-
             if unallocated < 0 {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.appCaption)
-                        .foregroundStyle(Color.danger)
-                    Text("You have allocated more than your available cash. Adjust your allocations.")
-                        .font(.appCaption)
-                        .foregroundStyle(Color.danger)
-                        .multilineTextAlignment(.center)
+                Button {
+                    showFixOverAllocation = true
+                } label: {
+                    HStack {
+                        Text(unallocated.asCurrency())
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color(red: 0.65, green: 0.1, blue: 0.1))
+
+                        Spacer()
+
+                        Text("Assigned Too Much")
+                            .font(.system(.subheadline, weight: .medium))
+                            .foregroundStyle(Color(red: 0.65, green: 0.1, blue: 0.1))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color(red: 0.65, green: 0.1, blue: 0.1))
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                    .background(Color(red: 0.95, green: 0.78, blue: 0.76))
+                    .clipShape(Capsule())
                 }
+                .buttonStyle(.borderless)
+                .padding(.horizontal, 4)
                 .padding(.top, 4)
-            } else if unallocated > 0 {
-                Text("Assign this money to your envelopes")
+            } else {
+                Text("Unallocated")
                     .font(.appCaption)
-                    .foregroundStyle(Color.textMuted)
+                    .foregroundStyle(Color.textSecondary)
+
+                Text(unallocated.asCurrency())
+                    .font(.appStatLarge)
+                    .foregroundStyle(color)
+
+                if unallocated > 0 {
+                    Text("Assign this money to your envelopes")
+                        .font(.appCaption)
+                        .foregroundStyle(Color.textMuted)
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -361,6 +366,9 @@ struct EnvelopesView: View {
                             : nil
                     )
                     .contentShape(Rectangle())
+                    .padding(.horizontal, 16)
+                    .listRowInsets(EdgeInsets())
+                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                     .onTapGesture {
                         if editingEnvelopeId == envelope.id {
                             // Already editing — do nothing
@@ -373,6 +381,7 @@ struct EnvelopesView: View {
                             editingEnvelopeId = envelope.id
                         }
                     }
+                    .listRowBackground(Color.bgCard)
                     .swipeActions(edge: .trailing) {
                         Button {
                             detailEnvelopeId = envelope.id
@@ -460,6 +469,9 @@ struct EnvelopesView: View {
             }
         }
         .padding(.vertical, 4)
+        .padding(.horizontal, 16)
+        .listRowInsets(EdgeInsets())
+        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
         .contentShape(Rectangle())
         .onTapGesture {
             toggleCategory(category.id ?? "")

@@ -111,6 +111,8 @@ struct AccountsView: View {
                         NavigationLink(value: account.id ?? "") {
                             AccountCardView(account: account)
                         }
+                        .listRowInsets(EdgeInsets())
+                        .brandRowBackground()
                     }
                 } header: {
                     Text("Bank Accounts")
@@ -126,6 +128,8 @@ struct AccountsView: View {
                         NavigationLink(value: account.id ?? "") {
                             AccountCardView(account: account)
                         }
+                        .listRowInsets(EdgeInsets())
+                        .brandRowBackground()
                     }
                 } header: {
                     Text("Credit Cards")

@@ -76,6 +76,7 @@ struct AccountCardView: View {
                     .foregroundStyle(Color.textSecondary)
             }
         }
+        .padding(.horizontal, 16)
         .accessibilityElement(children: .combine)
     }
 
